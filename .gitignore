@@ -4,7 +4,7 @@ npm-debug.log
 yarn-error.log
 yarn-debug.log
 .pnpm-debug.log
-package-lock.json
+# package-lock.json is needed for GitHub Actions
 
 # Environment variables
 .env
