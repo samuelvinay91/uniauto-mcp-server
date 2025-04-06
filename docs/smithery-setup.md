@@ -15,7 +15,7 @@ UniAuto MCP Server represents the future of test automation with its groundbreak
 1. **Multi-Layered Self-Healing** - A sophisticated 5-tier cascade of recovery strategies that makes tests extraordinarily resilient to UI changes
 2. **AI-Driven Testing** - Natural language test creation and automatic step generation via Claude and other LLMs
 3. **Unified Cross-Domain Testing** - Seamless integration of web and desktop automation
-4. **MCP Integration** - Direct control of testing infrastructure by AI assistants
+4. **MCP Integration** - Model Context Protocol integration for direct AI control of testing
 5. **Visual Intelligence** - Recognition of elements by appearance rather than structure
 
 ### Transformative Impact
@@ -130,11 +130,11 @@ Claude will use UniAuto to automate this task.
 
 ### Other AI Models
 
-UniAuto MCP Server also supports other AI models compatible with the Machine Control Protocol:
+UniAuto MCP Server also supports other AI models compatible with the Model Context Protocol:
 
 - **GPT-4**: Through Smithery.ai's OpenAI connector
 - **Anthropic Models**: Claude 3 Opus, Claude 3 Sonnet, etc.
-- **Custom Models**: Any model that follows the MCP spec
+- **Custom Models**: Any model that follows the Model Context Protocol (MCP) spec
 
 ## Command Reference
 

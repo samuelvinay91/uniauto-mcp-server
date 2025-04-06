@@ -23,7 +23,7 @@ Integration with Claude and other LLMs enables:
 - Intelligent response parsing to turn AI outputs into executable commands
 - Visual context interpretation (using screenshots as inputs)
 
-### 3. MCP (Machine Control Protocol) Integration
+### 3. MCP (Model Context Protocol) Integration
 The MCP implementation is particularly forward-thinking:
 - Allows AI assistants to directly control testing infrastructure
 - Exposes a standardized API for automation actions
@@ -48,7 +48,7 @@ The implementation of visual matching provides:
 - Desktop automation capabilities
 - Self-healing selectors for resilient test automation
 - AI integration for test generation (supports Claude and other models)
-- MCP (Machine Control Protocol) compatibility for use with AI assistants
+- MCP (Model Context Protocol) compatibility for use with AI assistants
 - Test case management and execution history
 - Visual element matching
 
@@ -145,7 +145,7 @@ npm start
 
 ## MCP Integration
 
-This server is compatible with the Machine Control Protocol (MCP) used by AI assistants like Claude. To use it with Claude or other AI models:
+This server is compatible with the Model Context Protocol (MCP) used by AI assistants like Claude. To use it with Claude or other AI models:
 
 1. Start the server
 2. Register the MCP server with the AI assistant
