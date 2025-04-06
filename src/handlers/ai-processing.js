@@ -1,6 +1,6 @@
-const axios = require('axios');
+const Anthropic = require('@anthropic-ai/sdk');
 const { logger } = require('../utils/logger');
-const { handleAutomationCommand } = require('../core/automation');
+const { handleAutomationCommand } = require('../core/mock-automation');
 
 async function aiProcessing(req, res) {
   try {
@@ -62,28 +62,16 @@ async function getCurrentPageUrl() {
 
 async function processWithAI(context, modelName = 'claude') {
   try {
-    // Configure AI service based on modelName
-    let apiEndpoint, headers, payload;
+    // Create Anthropic client instance
+    const anthropic = new Anthropic({
+      apiKey: process.env.CLAUDE_API_KEY,
+    });
     
-    if (modelName.toLowerCase().includes('claude')) {
-      // Claude API configuration
-      apiEndpoint = process.env.CLAUDE_API_ENDPOINT || 'https://api.anthropic.com/v1/messages';
-      headers = {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01'
-      };
-      
-      payload = {
-        model: process.env.CLAUDE_MODEL || 'claude-3-7-sonnet-20240229',
-        max_tokens: 4000,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `You are an automation assistant. Your task is to help automate the following:
+    // Prepare user message content
+    let content = [
+      {
+        type: 'text',
+        text: `You are an automation assistant. Your task is to help automate the following:
 
 ${context.task}
 
@@ -95,53 +83,54 @@ Please provide step-by-step instructions for automating this task. For each step
 1. The command (navigate, click, type, etc.)
 2. The parameters (selector, text, etc.)
 3. A brief description of what the step does`
-              }
-            ]
-          }
-        ]
-      };
-      
-      // Add screenshot if available
-      if (context.screenshot) {
-        // Note: In a real implementation, you'd need to convert the image to base64
-        // and add it as an image message. Simplified for this example.
-        logger.info('Screenshot would be included in Claude message');
       }
-    } else {
-      // Generic OpenAI-compatible API configuration
-      apiEndpoint = process.env.AI_API_ENDPOINT || 'https://api.openai.com/v1/chat/completions';
-      headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.AI_API_KEY}`
-      };
-      
-      payload = {
-        model: process.env.AI_MODEL || 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an automation assistant. Provide step-by-step instructions for web automation tasks.'
-          },
-          {
-            role: 'user',
-            content: `Task: ${context.task}\nCurrent URL: ${context.url || 'Unknown'}\nAdditional context: ${JSON.stringify(context.additionalContext)}`
-          }
-        ],
-        max_tokens: 2000
-      };
+    ];
+    
+    // Add screenshot if available
+    if (context.screenshot) {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const screenshotPath = path.resolve(context.screenshot);
+        
+        if (fs.existsSync(screenshotPath)) {
+          const imageData = fs.readFileSync(screenshotPath);
+          const base64Image = imageData.toString('base64');
+          
+          content.push({
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/png',
+              data: base64Image
+            }
+          });
+          
+          logger.info('Screenshot added to Claude message');
+        }
+      } catch (err) {
+        logger.warn(`Could not add screenshot to message: ${err.message}`);
+      }
     }
     
-    // Call AI API
-    const response = await axios.post(apiEndpoint, payload, { headers });
+    // Determine which model to use
+    const model = process.env.CLAUDE_MODEL || 'claude-3-7-sonnet-20240229';
+    logger.info(`Using AI model: ${model}`);
     
-    // Extract response text based on model type
-    let responseText;
-    if (modelName.toLowerCase().includes('claude')) {
-      responseText = response.data.content[0].text;
-    } else {
-      responseText = response.data.choices[0].message.content;
-    }
+    // Create the message
+    const response = await anthropic.messages.create({
+      model: model,
+      max_tokens: 4000,
+      messages: [
+        {
+          role: 'user',
+          content: content
+        }
+      ]
+    });
     
+    // Extract the response text
+    const responseText = response.content[0].text;
     return responseText;
   } catch (error) {
     logger.error(`AI API error: ${error.message}`);

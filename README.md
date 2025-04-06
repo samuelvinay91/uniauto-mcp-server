@@ -109,8 +109,27 @@ NODE_ENV=development
 # Database (optional)
 MONGODB_URI=mongodb://localhost:27017/uniauto
 
-# AI Configuration
+# Claude Configuration (required for AI processing)
 CLAUDE_API_KEY=your_claude_api_key
+CLAUDE_MODEL=claude-3-7-sonnet-20240229
+```
+
+### Claude API Integration
+
+UniAuto MCP Server uses the official Anthropic SDK to integrate with Claude:
+
+```javascript
+const Anthropic = require('@anthropic-ai/sdk');
+
+const anthropic = new Anthropic({
+  apiKey: process.env.CLAUDE_API_KEY,
+});
+
+const response = await anthropic.messages.create({
+  model: "claude-3-7-sonnet-20240229",
+  max_tokens: 1024,
+  messages: [{ role: "user", content: "Hello, Claude" }],
+});
 ```
 
 ## Usage
