@@ -1,5 +1,7 @@
 # UniAuto MCP Server
 
+[![smithery badge](https://smithery.ai/badge/@samuelvinay91/uniauto-mcp-server)](https://smithery.ai/server/@samuelvinay91/uniauto-mcp-server)
+
 Universal Test Automation MCP Server for web and desktop automation with self-healing capabilities and AI integration.
 
 ## Cutting-Edge Features
@@ -152,6 +154,10 @@ This server is compatible with the Model Context Protocol (MCP) used by AI assis
 3. The AI can now use the automation capabilities via the MCP protocol
 
 ### Smithery.ai Integration
+
+[![smithery badge](https://smithery.ai/badge/@samuelvinay91/uniauto-mcp-server)](https://smithery.ai/server/@samuelvinay91/uniauto-mcp-server)
+
+UniAuto MCP Server integrates seamlessly with [Smithery.ai](https://smithery.ai), making it easy to connect with Claude 3.7 and other AI assistants:
 
 For seamless integration with AI assistants, you can use Smithery.ai:
 
