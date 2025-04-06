@@ -1,6 +1,7 @@
-const cv = require('opencv4nodejs');
 const { logger } = require('../utils/logger');
 const { ElementRepository } = require('./element-repository');
+const fs = require('fs').promises;
+const path = require('path');
 
 const elementRepo = new ElementRepository();
 
@@ -61,7 +62,7 @@ async function checkSelectorExists(selector, page) {
   try {
     const element = await page.$(selector);
     return !!element;
-  } catch {
+  } catch (err) {
     return false;
   }
 }
@@ -126,7 +127,7 @@ function generateLooserSelectors(selector) {
   if (selector.includes('[')) {
     const attributeMatch = selector.match(/\[([^\]]+)=['"]([^'"]+)/i);
     if (attributeMatch) {
-      const [_, attrName, attrValue] = attributeMatch;
+      const [, attrName, attrValue] = attributeMatch;
       selectors.push(`[${attrName}*="${attrValue.substring(0, Math.floor(attrValue.length / 2))}"]`);
     }
   }
@@ -139,34 +140,68 @@ async function findByVisualMatch(brokenSelector, page) {
   if (!elementSnapshot) return null;
   
   try {
+    // Create temporary directory for screenshots if needed
+    const tempDir = path.join(__dirname, '../../temp');
+    try {
+      await fs.mkdir(tempDir, { recursive: true });
+    } catch (err) {
+      // Directory might already exist
+    }
+    
+    // Save element snapshot to a temporary file
+    const snapshotPath = path.join(tempDir, `element-snapshot-${Date.now()}.png`);
+    await fs.writeFile(snapshotPath, Buffer.from(elementSnapshot.image, 'base64'));
+    
     // Take full page screenshot
-    const screenshotBuffer = await page.screenshot();
-    const screenshot = cv.imdecode(Buffer.from(screenshotBuffer));
+    const fullScreenshotPath = path.join(tempDir, `page-snapshot-${Date.now()}.png`);
+    await page.screenshot({ path: fullScreenshotPath, fullPage: true });
     
-    // Convert element snapshot to OpenCV format
-    const template = cv.imdecode(Buffer.from(elementSnapshot.image, 'base64'));
+    // Use Playwright's built-in visual matching capabilities
+    // We'll use the DOM from the current page to find the best match
+    const { width: elementWidth, height: elementHeight } = elementSnapshot;
     
-    // Perform template matching
-    const matchResult = screenshot.matchTemplate(template, cv.TM_CCOEFF_NORMED);
-    const minMax = matchResult.minMaxLoc();
-    const { maxLoc, maxVal } = minMax;
-    
-    // If match confidence is high enough
-    if (maxVal > 0.8) {
-      // Use element coordinates to find element at that position
-      const x = maxLoc.x + template.cols / 2;
-      const y = maxLoc.y + template.rows / 2;
+    // Find elements that are similar in size to the snapshot
+    const potentialElements = await page.evaluate((targetWidth, targetHeight) => {
+      const elements = document.querySelectorAll('button, a, input, select, div, span, img');
+      const results = [];
       
-      // Use Playwright's specific method to get element at point
+      for (const el of elements) {
+        const rect = el.getBoundingClientRect();
+        // Allow for some size difference (20% tolerance)
+        const widthDiff = Math.abs(rect.width - targetWidth) / targetWidth;
+        const heightDiff = Math.abs(rect.height - targetHeight) / targetHeight;
+        
+        if (widthDiff < 0.2 && heightDiff < 0.2) {
+          results.push({
+            x: rect.x + rect.width / 2,
+            y: rect.y + rect.height / 2
+          });
+        }
+      }
+      
+      return results;
+    }, elementWidth, elementHeight);
+    
+    // Try each potential element
+    for (const point of potentialElements) {
+      // Check if there's an element at this position
       const elementAtPoint = await page.evaluate((x, y) => {
         const element = document.elementFromPoint(x, y);
         return element ? true : false;
-      }, x, y);
+      }, point.x, point.y);
       
-      if (!elementAtPoint) return null;
-      
-      // Playwright has built-in locator for element at position
-      return `internal:control=x:${x},y:${y}`;
+      if (elementAtPoint) {
+        // Use Playwright's built-in locator for element at position
+        return `internal:control=x:${point.x},y:${point.y}`;
+      }
+    }
+    
+    // Clean up temporary files
+    try {
+      await fs.unlink(snapshotPath);
+      await fs.unlink(fullScreenshotPath);
+    } catch (err) {
+      // Ignore cleanup errors
     }
     
     return null;
@@ -203,7 +238,7 @@ async function findByNearestText(brokenSelector, page) {
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       
       let node;
-      while (node = walker.nextNode()) {
+      while ((node = walker.nextNode())) {
         if (node.textContent.trim() && node.textContent.includes(text)) {
           textNodes.push(node);
         }

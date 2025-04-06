@@ -1,5 +1,4 @@
 const { chromium } = require('playwright');
-const robot = require('robotjs');
 const { logger } = require('../utils/logger');
 const { selfHeal } = require('./self-healing');
 const { ElementRepository } = require('./element-repository');
@@ -11,12 +10,15 @@ const elementRepo = new ElementRepository();
 
 async function initBrowser() {
   if (!browser) {
-    browser = await chromium.launch({
+    const newBrowser = await chromium.launch({
       headless: false
     });
-    context = await browser.newContext({
+    const newContext = await newBrowser.newContext({
       viewport: { width: 1366, height: 768 }
     });
+    
+    browser = newBrowser;
+    context = newContext;
     logger.info('Browser initialized');
   }
   return browser;
@@ -29,7 +31,8 @@ async function getPage() {
   
   if (!activePage) {
     const pages = context.pages();
-    activePage = pages.length > 0 ? pages[0] : await context.newPage();
+    const newPage = pages.length > 0 ? pages[0] : await context.newPage();
+    activePage = newPage;
   }
   
   return activePage;
@@ -59,10 +62,10 @@ async function handleAutomationCommand(command, params) {
         return await takeScreenshot(params.fileName);
       
       case 'desktop_click':
-        return desktopClick(params.x, params.y);
+        return await desktopClick(params.x, params.y);
       
       case 'desktop_type':
-        return desktopType(params.text);
+        return await desktopType(params.text);
       
       case 'wait':
         return await wait(params.milliseconds);
@@ -159,14 +162,15 @@ async function takeScreenshot(fileName = `screenshot-${Date.now()}.png`) {
   return { status: 'success', path };
 }
 
-function desktopClick(x, y) {
-  robot.moveMouse(x, y);
-  robot.mouseClick();
+async function desktopClick(x, y) {
+  const page = await getPage();
+  await page.mouse.click(x, y);
   return { status: 'success', x, y };
 }
 
-function desktopType(text) {
-  robot.typeString(text);
+async function desktopType(text) {
+  const page = await getPage();
+  await page.keyboard.type(text);
   return { status: 'success', textLength: text.length };
 }
 
@@ -177,10 +181,11 @@ async function wait(milliseconds = 1000) {
 
 async function cleanup() {
   if (browser) {
-    await browser.close();
+    const browserToClose = browser;
     browser = null;
     context = null;
     activePage = null;
+    await browserToClose.close();
     logger.info('Browser closed');
   }
 }
