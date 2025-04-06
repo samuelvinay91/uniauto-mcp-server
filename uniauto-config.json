@@ -1,0 +1,19 @@
+{
+  "server": {
+    "port": 3000,
+    "host": "localhost"
+  },
+  "automation": {
+    "headless": false,
+    "browser": "chromium",
+    "slowMo": 50
+  },
+  "selfHealing": {
+    "enabled": true,
+    "strategies": ["repository", "role", "visual", "text"]
+  },
+  "ai": {
+    "defaultModel": "claude-3-sonnet",
+    "apiKey": "YOUR_API_KEY"
+  }
+}
