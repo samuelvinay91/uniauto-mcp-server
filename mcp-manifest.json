@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Universal Test Automation with self-healing capabilities",
   "author": "UniAuto Team",
+  "protocol": "mcp",
+  "protocolName": "Model Context Protocol",
+  "protocolVersion": "1.0",
   "actions": [
     {
       "name": "navigate",

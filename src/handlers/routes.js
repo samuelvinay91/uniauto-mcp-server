@@ -3,6 +3,7 @@ const { logger } = require('../utils/logger');
 const { handleAutomationCommand } = require('../core/automation');
 const { createTestCase, getAllTestCases, getTestCaseById, updateTestCase, deleteTestCase } = require('./test-cases');
 const { aiProcessing } = require('./ai-processing');
+const { validateMcpRequest, formatMcpResponse, formatMcpErrorResponse } = require('../utils/mcp-validator');
 
 const router = express.Router();
 
@@ -39,18 +40,24 @@ router.delete('/test-cases/:id', deleteTestCase);
 // AI processing
 router.post('/ai/process', aiProcessing);
 
-// MCP Platform integration endpoints
+// Model Context Protocol (MCP) integration endpoints
 router.post('/mcp/invoke', async (req, res) => {
   try {
-    const { action, parameters, executionId } = req.body;
-    
-    if (!action) {
-      return res.status(400).json({ error: 'Action is required' });
+    // Validate the incoming Model Context Protocol request
+    const validation = validateMcpRequest(req);
+    if (!validation.isValid) {
+      return res.status(400).json(formatMcpErrorResponse(
+        new Error(validation.error),
+        req.body.executionId
+      ));
     }
     
-    logger.info(`MCP invoke: ${action}, executionId: ${executionId}`);
+    // Parse Model Context Protocol request parameters
+    const { action, parameters, executionId } = req.body;
     
-    // Map MCP actions to internal commands
+    logger.info(`Model Context Protocol invoke: ${action}, executionId: ${executionId}`);
+    
+    // Map Model Context Protocol actions to internal commands
     let command, params;
     
     switch (action) {
@@ -92,33 +99,36 @@ router.post('/mcp/invoke', async (req, res) => {
         break;
         
       default:
-        return res.status(400).json({ error: `Unsupported action: ${action}` });
+        return res.status(400).json(formatMcpErrorResponse(
+          new Error(`Unsupported Model Context Protocol action: ${action}`),
+          executionId
+        ));
     }
     
+    // Execute automation command
     const result = await handleAutomationCommand(command, params);
-    res.json({
-      executionId,
-      status: 'success',
-      action,
-      result
-    });
+    
+    // Format response according to Model Context Protocol specification using the validator
+    res.json(formatMcpResponse(action, result, executionId));
   } catch (error) {
-    logger.error(`MCP invoke error: ${error.message}`);
-    res.status(500).json({
-      executionId: req.body.executionId,
-      status: 'error',
-      error: error.message
-    });
+    // Log error with MCP context
+    logger.error(`Model Context Protocol invoke error: ${error.message}`);
+    
+    // Return error response in MCP-compliant format using the validator
+    res.status(500).json(formatMcpErrorResponse(error, req.body.executionId));
   }
 });
 
-// MCP manifest endpoint
+// Model Context Protocol (MCP) manifest endpoint
 router.get('/mcp/manifest', (req, res) => {
+  // Return tool manifest in Model Context Protocol format
   res.json({
     name: 'UniAuto Test Automation',
     version: '1.0.0',
     description: 'Universal Test Automation with self-healing capabilities',
     author: 'UniAuto Team',
+    protocol: 'mcp',
+    protocolVersion: '1.0',
     actions: [
       {
         name: 'navigate',

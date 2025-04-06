@@ -4,7 +4,9 @@ This guide explains how to integrate UniAuto MCP Server with Claude, Anthropic's
 
 ## Claude Code Integration
 
-Claude Code is a specialized version of Claude designed for software development. It has built-in support for the Machine Control Protocol (MCP) which makes it ideal for working with UniAuto.
+Claude Code is a specialized version of Claude designed for software development. It has built-in support for the Model Context Protocol (MCP) which makes it ideal for working with UniAuto.
+
+The Model Context Protocol enables Claude to discover and use UniAuto's automation capabilities through a standardized interface.
 
 ### Prerequisites
 

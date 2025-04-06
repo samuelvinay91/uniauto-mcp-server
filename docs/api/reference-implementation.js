@@ -1,8 +1,11 @@
 /**
- * UniAuto MCP Server - Reference Implementation for Client Integration
+ * UniAuto MCP Server - Model Context Protocol (MCP) Reference Implementation
  * 
  * This file demonstrates how to interact with the UniAuto MCP Server
- * programmatically from JavaScript applications.
+ * using the Model Context Protocol (MCP) specification.
+ * 
+ * The Model Context Protocol allows AI models like Claude to interact with tools
+ * by providing a standardized way to describe tool capabilities and invoke actions.
  */
 
 // Configuration
@@ -11,50 +14,69 @@ const MANIFEST_ENDPOINT = '/api/mcp/manifest';
 const INVOKE_ENDPOINT = '/api/mcp/invoke';
 
 /**
- * Fetch the MCP manifest to understand available actions and parameters
- * @returns {Promise<Object>} The MCP manifest
+ * Fetch the Model Context Protocol (MCP) manifest to understand available actions and parameters
+ * 
+ * MCP manifests define the capabilities, actions, and parameters of a tool
+ * that can be used by AI assistants like Claude.
+ * 
+ * @returns {Promise<Object>} The Model Context Protocol manifest
  */
 async function getManifest() {
   try {
     const response = await fetch(`${UNIAUTO_SERVER_URL}${MANIFEST_ENDPOINT}`);
     
     if (!response.ok) {
-      throw new Error(`Failed to fetch manifest: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to fetch Model Context Protocol manifest: ${response.status} ${response.statusText}`);
     }
     
     return await response.json();
   } catch (error) {
-    console.error('Error fetching MCP manifest:', error);
+    console.error('Error fetching Model Context Protocol manifest:', error);
     throw error;
   }
 }
 
 /**
- * Invoke an action on the UniAuto MCP Server
- * @param {string} action - The action name to invoke
- * @param {Object} parameters - Parameters for the action
- * @returns {Promise<Object>} The result of the action
+ * Invoke an action on the UniAuto MCP Server using the Model Context Protocol
+ * 
+ * This function formats the request according to the Model Context Protocol (MCP)
+ * specification, which standardizes how AI models interact with tools.
+ * 
+ * @param {string} action - The action name to invoke (as defined in the MCP manifest)
+ * @param {Object} parameters - Parameters for the action (as defined in the MCP manifest)
+ * @param {string} [executionId] - Optional unique ID for this execution (for tracking/logging)
+ * @returns {Promise<Object>} The Model Context Protocol formatted result of the action
  */
-async function invokeAction(action, parameters = {}) {
+async function invokeAction(action, parameters = {}, executionId = crypto.randomUUID()) {
   try {
+    // Format request according to Model Context Protocol specification
     const response = await fetch(`${UNIAUTO_SERVER_URL}${INVOKE_ENDPOINT}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-MCP-Version': '1.0'
       },
       body: JSON.stringify({
         action,
-        parameters
+        parameters,
+        executionId
       })
     });
     
     if (!response.ok) {
-      throw new Error(`Failed to invoke action: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to invoke Model Context Protocol action: ${response.status} ${response.statusText}`);
     }
     
-    return await response.json();
+    const result = await response.json();
+    
+    // Validate that response follows Model Context Protocol format
+    if (!result.status || !result.action) {
+      console.warn('Response may not follow Model Context Protocol format:', result);
+    }
+    
+    return result;
   } catch (error) {
-    console.error(`Error invoking action ${action}:`, error);
+    console.error(`Error invoking Model Context Protocol action ${action}:`, error);
     throw error;
   }
 }
