@@ -66,7 +66,7 @@ npm start
 This test verifies that your Claude API key works and can communicate with the Anthropic API:
 
 ```bash
-node test-claude.js
+node scripts/test-claude.js
 ```
 
 You should see a response from Claude with steps for automating a form.
@@ -76,7 +76,7 @@ You should see a response from Claude with steps for automating a form.
 This test verifies that the MCP server endpoints work correctly:
 
 ```bash
-node test-mcp.js
+node scripts/test-mcp.js
 ```
 
 You should see the server respond to a sequence of MCP commands.
@@ -86,7 +86,7 @@ You should see the server respond to a sequence of MCP commands.
 For a more interactive test:
 
 ```bash
-node demo.js
+node scripts/demo.js
 ```
 
 This will prompt for a URL and then run a sequence of automation steps.
@@ -120,7 +120,7 @@ smithery connect claude --version 3-7-sonnet
 ### Alternatively, Use the Setup Script
 
 ```bash
-./setup-smithery.sh
+./scripts/setup-smithery.sh
 ```
 
 This interactive script automates the Smithery setup process.
@@ -155,7 +155,7 @@ If Claude integration fails:
 
 1. Verify your API key in the `.env` file
 2. Check that you have access to the Claude 3.7 model
-3. Test with the `test-claude.js` script
+3. Test with the `scripts/test-claude.js` script
 
 ### Browser Dependencies Issues
 
@@ -210,10 +210,10 @@ Content-Type: application/json
 
 For more detailed information, see:
 
-- [Anthropic SDK Guide](docs/ai-integration/anthropic-sdk.md)
-- [Smithery Integration](docs/smithery-setup.md)
-- [Claude Integration](docs/ai-integration/claude.md)
-- [Model Context Protocol](docs/api/model-context-protocol.md)
+- [Anthropic SDK Guide](../ai-integration/anthropic-sdk.md)
+- [Smithery Integration](SMITHERY-CLAUDE-GUIDE.md)
+- [Claude Integration](../ai-integration/claude.md)
+- [Model Context Protocol](../api/model-context-protocol.md)
 
 ## Need Help?
 

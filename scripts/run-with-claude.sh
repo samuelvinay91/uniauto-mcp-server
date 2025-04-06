@@ -137,8 +137,8 @@ run_demo() {
 view_setup_instructions() {
   display_step "4" "Claude Setup Instructions"
   
-  if [ -f "CLAUDE-SETUP.md" ]; then
-    cat CLAUDE-SETUP.md | less
+  if [ -f "docs/setup/CLAUDE-SETUP.md" ]; then
+    cat docs/setup/CLAUDE-SETUP.md | less
   else
     echo -e "${RED}Setup instructions file not found!${NC}"
   fi
@@ -150,8 +150,8 @@ view_setup_instructions() {
 view_usage_instructions() {
   display_step "5" "Claude Usage Instructions"
   
-  if [ -f "claude-instructions.md" ]; then
-    cat claude-instructions.md | less
+  if [ -f "docs/setup/claude-instructions.md" ]; then
+    cat docs/setup/claude-instructions.md | less
   else
     echo -e "${RED}Usage instructions file not found!${NC}"
   fi

@@ -193,7 +193,7 @@ smithery connect --assistant claude
 
 Once connected, you can use Claude Code, Claude Web, VSCode with Claude Extension, or Cursor to control UniAuto for automated testing.
 
-See the [Smithery Setup Guide](docs/smithery-setup.md) for detailed instructions.
+See the [Smithery Setup Guide](docs/setup/SMITHERY-CLAUDE-GUIDE.md) for detailed instructions.
 
 ### AI Assistant Integration
 

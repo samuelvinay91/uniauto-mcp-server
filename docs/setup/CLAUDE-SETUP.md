@@ -25,7 +25,7 @@ This guide explains how to connect Claude to your locally running UniAuto MCP Se
    PORT=3000
    NODE_ENV=development
    CLAUDE_API_KEY=your_claude_api_key
-   CLAUDE_MODEL=claude-3-sonnet-20240229
+   CLAUDE_MODEL=claude-3-7-sonnet-20240229
    ```
 
 4. Install Playwright browser (if not already done):

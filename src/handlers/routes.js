@@ -1,6 +1,7 @@
 const express = require('express');
 const { logger } = require('../utils/logger');
-const { handleAutomationCommand } = require('../core/automation');
+// Use mock automation for testing without browser dependencies
+const { handleAutomationCommand } = require('../core/mock-automation');
 const { createTestCase, getAllTestCases, getTestCaseById, updateTestCase, deleteTestCase } = require('./test-cases');
 const { aiProcessing } = require('./ai-processing');
 const { validateMcpRequest, formatMcpResponse, formatMcpErrorResponse } = require('../utils/mcp-validator');
