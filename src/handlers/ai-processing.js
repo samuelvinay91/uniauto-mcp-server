@@ -75,7 +75,7 @@ async function processWithAI(context, modelName = 'claude') {
       };
       
       payload = {
-        model: process.env.CLAUDE_MODEL || 'claude-3-opus-20240229',
+        model: process.env.CLAUDE_MODEL || 'claude-3-7-sonnet-20240229',
         max_tokens: 4000,
         messages: [
           {

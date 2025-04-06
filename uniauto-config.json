@@ -13,7 +13,7 @@
     "strategies": ["repository", "role", "visual", "text"]
   },
   "ai": {
-    "defaultModel": "claude-3-sonnet",
+    "defaultModel": "claude-3-7-sonnet",
     "apiKey": "YOUR_API_KEY"
   }
 }
