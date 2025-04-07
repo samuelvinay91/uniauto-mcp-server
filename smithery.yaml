@@ -1,0 +1,54 @@
+name: uniauto-mcp-server
+version: 1.0.0
+displayName: UniAuto MCP Server
+description: Universal Test Automation with self-healing capabilities and AI-driven test generation
+
+endpoints:
+  invoke: /api/mcp/invoke
+  manifest: /api/mcp/manifest
+
+capabilities:
+  - web_automation
+  - desktop_automation
+  - self_healing
+  - ai_integration
+  - screenshot_capture
+  - visual_comparison
+  - test_generation
+  - project_scaffolding
+  - accessibility_testing
+  - performance_testing
+  - network_tracing
+  - parallel_testing
+
+requirements:
+  node: ">=16.0.0"
+  npm: ">=7.0.0"
+
+config:
+  port: 3000
+  claude_api_key:
+    description: Claude API Key for AI features
+    type: string
+    required: true
+
+deploy:
+  container:
+    port: 3000
+    healthCheck:
+      path: /api/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  env:
+    - name: PORT
+      value: "3000"
+    - name: NODE_ENV
+      value: "production"
+    - name: CLAUDE_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: claude-secrets
+          key: api-key
+    - name: CLAUDE_MODEL
+      value: "claude-3-7-sonnet-20240229"
