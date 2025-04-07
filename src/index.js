@@ -10,10 +10,35 @@ const routes = require('./handlers/routes');
 
 // Check if script was called directly or from MCP
 const isMcpServerStart = process.argv.includes('--mcp-server');
+const logToStderr = process.env.LOG_TO_STDERR === 'true';
+
+// Use stderr for console logs when in MCP mode to avoid interfering with protocol communication
+// But still make sure logs are visible when running in MCP mode
+const consoleLog = (message) => {
+  if (isMcpServerStart && logToStderr) {
+    process.stderr.write(`${message}\n`);
+    
+    // Also output to console for better visibility when run directly
+    if (!process.env.CI) {
+      console.log(`[MCP LOG] ${message}`);
+    }
+  } else {
+    console.log(message);
+  }
+};
+
+// Print a startup banner to show the server is running
+consoleLog(`
+=====================================================
+  UniAuto MCP Server v1.0.0
+  Mode: ${isMcpServerStart ? 'MCP Protocol' : 'Direct HTTP API'}
+=====================================================
+`);
+
 if (!isMcpServerStart) {
-  console.log('\nStarting UniAuto MCP Server - Direct Mode');
+  consoleLog('\nStarting UniAuto MCP Server - Direct Mode');
 } else {
-  console.log('\nStarting UniAuto MCP Server - MCP Mode');
+  consoleLog('\nStarting UniAuto MCP Server - MCP Mode');
 }
 
 // Create logs directory if it doesn't exist
@@ -45,48 +70,64 @@ app.use('/api', routes);
 // Initialize services
 async function startServer() {
   try {
-    console.log('- Environment:');
-    console.log(`  - NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
-    console.log(`  - PORT: ${PORT}`);
-    console.log(`  - MONGODB_URI: ${process.env.MONGODB_URI ? 'configured' : 'not configured'}`);
-    console.log(`  - CLAUDE_API_KEY: ${process.env.CLAUDE_API_KEY ? 'configured' : 'not configured'}`);
-    console.log(`  - LOG_DIR: ${logDir}`);
+    consoleLog('- Environment:');
+    consoleLog(`  - NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+    consoleLog(`  - PORT: ${PORT}`);
+    consoleLog(`  - MCP Mode: ${isMcpServerStart ? 'enabled' : 'disabled'}`);
+    consoleLog(`  - MONGODB_URI: ${process.env.MONGODB_URI ? 'configured' : 'not configured'}`);
+    consoleLog(`  - CLAUDE_API_KEY: ${process.env.CLAUDE_API_KEY ? 'configured' : 'not configured'}`);
+    consoleLog(`  - LOG_DIR: ${logDir}`);
     
     // Connect to database if configured
     if (process.env.MONGODB_URI) {
       try {
-        console.log('- Connecting to MongoDB...');
+        consoleLog('- Connecting to MongoDB...');
         await initializeDatabase();
-        console.log('- Connected to MongoDB successfully');
+        consoleLog('- Connected to MongoDB successfully');
       } catch (dbError) {
-        console.error(`- MongoDB connection failed: ${dbError.message}`);
+        const errorMsg = `- MongoDB connection failed: ${dbError.message}`;
+        if (isMcpServerStart && logToStderr) {
+          process.stderr.write(`${errorMsg}\n`);
+        } else {
+          console.error(errorMsg);
+        }
         logger.warn(`Continuing without MongoDB connection: ${dbError.message}`);
       }
     } else {
-      console.log('- No MongoDB URI configured, skipping database initialization');
+      consoleLog('- No MongoDB URI configured, skipping database initialization');
     }
     
     // Start HTTP server
     const server = app.listen(PORT, () => {
-      console.log(`- Server started successfully on port ${PORT}`);
+      consoleLog(`- Server started successfully on port ${PORT}`);
       logger.info(`UniAuto MCP Server running on port ${PORT}`);
-      console.log('\nServer is ready for connections!');
-      console.log('- API endpoints available at:');
-      console.log(`  http://localhost:${PORT}/api/health`);
-      console.log(`  http://localhost:${PORT}/api/mcp/manifest`);
+      consoleLog('\nServer is ready for connections!');
+      consoleLog('- API endpoints available at:');
+      consoleLog(`  http://localhost:${PORT}/api/health`);
+      consoleLog(`  http://localhost:${PORT}/api/mcp/manifest`);
     });
     
     // Setup WebSocket server
     try {
-      console.log('- Setting up WebSocket server...');
+      consoleLog('- Setting up WebSocket server...');
       setupWebsocketServer(server);
-      console.log('- WebSocket server setup complete');
+      consoleLog('- WebSocket server setup complete');
     } catch (wsError) {
-      console.error(`- WebSocket setup failed: ${wsError.message}`);
+      const errorMsg = `- WebSocket setup failed: ${wsError.message}`;
+      if (isMcpServerStart && logToStderr) {
+        process.stderr.write(`${errorMsg}\n`);
+      } else {
+        console.error(errorMsg);
+      }
       logger.error(`WebSocket setup failed: ${wsError.message}`);
     }
   } catch (error) {
-    console.error(`\nFATAL ERROR: Failed to start server: ${error.message}`);
+    const fatalError = `\nFATAL ERROR: Failed to start server: ${error.message}`;
+    if (isMcpServerStart && logToStderr) {
+      process.stderr.write(`${fatalError}\n`);
+    } else {
+      console.error(fatalError);
+    }
     logger.error(`Failed to start server: ${error.message}`);
     process.exit(1);
   }

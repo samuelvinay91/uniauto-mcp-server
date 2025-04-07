@@ -115,32 +115,18 @@ async function fixClaudeDesktopConfig() {
       }
     });
     
-    // Add both configurations: uniauto (for full server) and uniauto-minimal (for minimal server)
-    // This ensures the user can use either one
-    
-    // 1. Full server configuration
+    // Add the main server configuration with proper MCP flags
     claudeConfig.mcpServers.uniauto = {
       command: "node",
-      args: [path.join(currentDir, "src", "index.js")],
+      args: [path.join(currentDir, "src", "index.js"), "--mcp-server"],
       env: {
         CLAUDE_API_KEY: apiKey,
         CLAUDE_MODEL: model,
         PORT: port,
-        NODE_ENV: "development"
-      },
-      disabled: false,
-      autoApprove: []
-    };
-    
-    // 2. Minimal server configuration
-    claudeConfig.mcpServers["uniauto-minimal"] = {
-      command: "node",
-      args: [path.join(currentDir, "src", "minimal-server.js")],
-      env: {
-        CLAUDE_API_KEY: apiKey,
-        CLAUDE_MODEL: model,
-        PORT: port,
-        NODE_ENV: "development"
+        NODE_ENV: "development",
+        // Adding specific MCP environment variables to ensure proper communication
+        MCP_ENABLED: "true",
+        LOG_TO_STDERR: "true"
       },
       disabled: false,
       autoApprove: []
@@ -151,14 +137,12 @@ async function fixClaudeDesktopConfig() {
     fs.writeFileSync(claudeConfigPath, JSON.stringify(claudeConfig, null, 2));
     
     console.log(`\n${colors.green}✓ Claude Desktop configuration successfully updated!${colors.reset}`);
-    console.log(`${colors.green}✓ Added both full and minimal server configurations${colors.reset}`);
+    console.log(`${colors.green}✓ Configured main server with MCP protocol support${colors.reset}`);
     
     // Display instructions
     console.log(`\n${colors.cyan}Next Steps:${colors.reset}`);
     console.log(`${colors.blue}1. Close Claude Desktop if it's running${colors.reset}`);
-    console.log(`${colors.blue}2. Start either server:${colors.reset}`);
-    console.log(`   • Minimal server: ${colors.yellow}node src/minimal-server.js${colors.reset}`);
-    console.log(`   • Full server: ${colors.yellow}npm start${colors.reset}`);
+    console.log(`${colors.blue}2. Start the server with: ${colors.yellow}npm start${colors.reset}`);
     console.log(`${colors.blue}3. Open Claude Desktop${colors.reset}`);
     console.log(`${colors.blue}4. Ask Claude: "${colors.yellow}Using UniAuto, navigate to example.com and tell me the page title${colors.reset}"\n`);
     

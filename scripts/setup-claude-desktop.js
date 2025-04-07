@@ -118,15 +118,18 @@ async function main() {
       claudeConfig.mcpServers = {};
     }
 
-    // Add or update UniAuto MCP server configuration
-      claudeConfig.mcpServers.uniauto = {
+    // Add or update UniAuto MCP server configuration with proper MCP flags
+    claudeConfig.mcpServers.uniauto = {
       command: "node",
-      args: [path.join(currentDir, "src", "minimal-server.js")],
+      args: [path.join(currentDir, "src", "index.js"), "--mcp-server"],
       env: {
         CLAUDE_API_KEY: apiKey,
         CLAUDE_MODEL: model,
         PORT: port,
-        NODE_ENV: "development"
+        NODE_ENV: "development",
+        // Adding specific MCP environment variables to ensure proper communication
+        MCP_ENABLED: "true",
+        LOG_TO_STDERR: "true"
       },
       disabled: false,
       autoApprove: []
