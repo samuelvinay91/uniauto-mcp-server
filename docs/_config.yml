@@ -10,6 +10,8 @@ show_downloads: true
 navbar:
   - title: Home
     url: /
+  - title: Smithery.ai Integration
+    url: /smithery/
   - title: GitHub
     url: https://github.com/samuelvinay91/uniauto-mcp-server
   - title: API Reference
