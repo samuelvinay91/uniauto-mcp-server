@@ -44,10 +44,9 @@ startCommand:
           defaultModel:
             type: string
             description: "Default AI model to use"
-          apiKey:
-            type: string
-            description: "API Key for AI features (e.g., Claude)"
-        required: ["apiKey"]
+        # Note: API Key is now expected as an environment variable (CLAUDE_API_KEY)
+        # and is no longer configured via this file.
+        # No longer required here as it comes from env var
       logLevel: # Keep logLevel at the root if it's intended to be separate
         type: string
         default: "info"
@@ -63,7 +62,7 @@ startCommand:
       "env": {
         "PORT": config.server.port.toString(),
         "NODE_ENV": "production",
-        "CLAUDE_API_KEY": config.ai.apiKey,
+        # CLAUDE_API_KEY will be passed by Smithery from its environment/settings
         "CLAUDE_MODEL": config.ai.defaultModel || "claude-3-7-sonnet-20240229", # Use default if not provided
         "LOG_LEVEL": config.logLevel || "info",
         "LOG_DIR": "logs",
