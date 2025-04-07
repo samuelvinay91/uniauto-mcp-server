@@ -28,6 +28,9 @@ Integration with Claude and other LLMs enables:
 - Automatic test step generation with appropriate selectors
 - Intelligent response parsing to turn AI outputs into executable commands
 - Visual context interpretation (using screenshots as inputs)
+- Automated test code generation in multiple frameworks (Playwright, Cypress, Jest, etc.)
+- Support for various testing styles (BDD, TDD) and output formats
+- Application structure analysis for intelligent test creation
 
 ### 3. MCP (Model Context Protocol) Integration
 The MCP implementation is particularly forward-thinking:
@@ -54,6 +57,7 @@ The implementation of visual matching provides:
 - Desktop automation capabilities
 - Self-healing selectors for resilient test automation
 - AI integration for test generation (supports Claude and other models)
+- Automated test code generation in multiple frameworks and styles
 - MCP (Model Context Protocol) compatibility for use with AI assistants
 - Test case management and execution history
 - Visual element matching
@@ -164,6 +168,19 @@ npm start
 ### AI Integration
 - `POST /api/ai/process` - Process automation task with AI
 
+### Test Generation
+- `POST /api/generate-tests` - Generate test cases for an application
+- `POST /api/generate-full-suite` - Generate a complete test suite with multiple test types
+- `POST /api/scaffold-project` - Scaffold a complete test project structure
+- `GET /api/test-frameworks` - Get available test frameworks, styles, and formats
+
+### Advanced Testing
+- `POST /api/visual-compare` - Compare a page or element against a baseline image
+- `POST /api/accessibility-test` - Perform accessibility testing on a page
+- `POST /api/performance-test` - Perform performance testing on a page
+- `POST /api/network-trace` - Trace network activity for API testing
+- `POST /api/test-suite` - Run a comprehensive test suite
+
 ### MCP Integration
 - `POST /api/mcp/invoke` - MCP compatible command execution
 - `GET /api/mcp/manifest` - Get MCP manifest
@@ -207,6 +224,32 @@ UniAuto works with various AI assistants:
 - [VSCode Integration Guide](docs/ai-integration/vscode.md)
 - [Cursor Integration Guide](docs/ai-integration/cursor.md)
 - [Other AI Models Integration](docs/ai-integration/other-models.md)
+- [Test Generation Guide](docs/ai-integration/test-generation.md)
+
+## Test Generation Capabilities
+
+UniAuto MCP Server can automatically generate test code in various frameworks and styles:
+
+- **Multiple Frameworks**: Generate tests for Playwright, Cypress, Jest, Selenium, WebDriverIO, and more
+- **Test Styles**: Support for BDD, TDD, and other testing methodologies
+- **Output Formats**: JavaScript, TypeScript, Python, Java, C#, and Ruby
+- **Application Analysis**: Intelligent application structure analysis for context-aware test generation
+- **Project Scaffolding**: Generate complete test projects with configuration files
+- **Claude AI Integration**: Uses Claude 3.7 to produce high-quality, maintainable test code
+- **MCP Integration**: All test generation capabilities exposed via the Model Context Protocol
+
+## Advanced Testing Capabilities
+
+UniAuto MCP Server provides comprehensive testing capabilities beyond just generating test code:
+
+- **Visual Testing**: Compare page or element screenshots against baselines with configurable thresholds
+- **Accessibility Testing**: Check WCAG compliance with detailed reports on issues and suggested fixes 
+- **Performance Testing**: Measure key web performance metrics like load time, FCP, LCP, and resources
+- **Network Tracing**: Monitor API calls, analyze responses, and validate network behavior
+- **Parallel Execution**: Run multiple test types concurrently to reduce total execution time
+- **Comprehensive Test Suite**: Combined test execution with unified reporting
+
+See the [Test Generation Guide](docs/ai-integration/test-generation.md) for detailed API documentation and examples.
 
 ## Self-Healing Capabilities
 
@@ -215,7 +258,7 @@ The server uses several strategies for self-healing selectors:
 1. Alternative selector repository
 2. Role-based selectors (Playwright specific)
 3. Looser CSS selector generation
-4. Visual element matching using OpenCV
+4. Visual element matching using Playwright's built-in capabilities
 5. Nearest text-based element finding
 
 ## Playwright Benefits
