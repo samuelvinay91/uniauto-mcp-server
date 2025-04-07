@@ -1,5 +1,9 @@
 # UniAuto MCP Server
 
+<p align="center">
+  <img src="public/Gemini_Generated_Image_ufccx0ufccx0ufcc.jpeg" alt="UniAuto Logo" width="250"/>
+</p>
+
 [![smithery badge](https://smithery.ai/badge/@samuelvinay91/uniauto-mcp-server)](https://smithery.ai/server/@samuelvinay91/uniauto-mcp-server)
 
 Universal Test Automation MCP Server for web and desktop automation with self-healing capabilities and AI integration.
