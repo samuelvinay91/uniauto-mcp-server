@@ -14,8 +14,8 @@ COPY . .
 # Expose the port defined in the application
 EXPOSE 3000
 
-# Set environment variables
-ENV NODE_ENV=production
+# Install required dependencies
+RUN apk add --no-cache bash
 
-# Start the server
-CMD ["npm", "start"]
+# Playwright browsers setup
+RUN npx playwright install --with-deps chromium
