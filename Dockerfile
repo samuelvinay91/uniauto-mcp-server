@@ -11,11 +11,11 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Expose the port defined in the application
-EXPOSE 3000
-
 # Install required dependencies
 RUN apk add --no-cache bash
+
+# Create log directory
+RUN mkdir -p logs
 
 # Playwright browsers setup
 RUN npx playwright install --with-deps chromium
