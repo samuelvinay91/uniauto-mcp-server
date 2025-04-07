@@ -1,6 +1,7 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const { logger } = require('../utils/logger');
 const { handleAutomationCommand } = require('../core/mock-automation');
+const { generateTests, generateFullTestSuite } = require('../core/test-generator');
 
 async function aiProcessing(req, res) {
   try {
@@ -220,6 +221,66 @@ function parseAIResponseToSteps(response) {
   }
 }
 
+/**
+ * Process test generation with AI
+ * 
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+async function aiTestGeneration(req, res) {
+  try {
+    const { url, description, framework, style, outputFormat } = req.body;
+    
+    if (!url) {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+    
+    logger.info(`AI test generation for URL: ${url}`);
+    
+    // Get screenshot of the page if possible
+    let screenshot = null;
+    try {
+      // Navigate to the URL first
+      await handleAutomationCommand('navigate', { url });
+      
+      // Take a screenshot
+      const screenshotResult = await handleAutomationCommand('screenshot', {
+        fileName: `test-generation-${Date.now()}.png`
+      });
+      
+      screenshot = screenshotResult.path;
+    } catch (err) {
+      logger.warn(`Failed to navigate or take screenshot: ${err.message}`);
+      // Continue without screenshot
+    }
+    
+    // Generate tests using the generator module
+    const result = await generateTests({
+      url,
+      framework: framework || 'playwright',
+      style: style || 'bdd',
+      format: outputFormat || 'javascript',
+      prompt: description || 'Generate comprehensive tests for this application',
+      additionalContext: {
+        hasScreenshot: !!screenshot,
+        generatedWith: 'AI-assisted test generation'
+      }
+    });
+    
+    res.json({
+      url,
+      testCode: result.testCode,
+      framework,
+      style,
+      generatedWith: 'AI-assisted test generation'
+    });
+  } catch (error) {
+    logger.error(`AI test generation error: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
-  aiProcessing
+  aiProcessing,
+  aiTestGeneration
 };

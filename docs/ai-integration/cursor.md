@@ -1,42 +1,66 @@
-# Cursor Integration Guide
+# Cursor Integration with UniAuto MCP Server
 
-## Overview
-
-This guide explains how to integrate UniAuto MCP Server with Cursor, an AI-powered code editor. This integration enables you to automate testing and UI interactions directly from your development environment.
+This guide explains how to set up and use UniAuto MCP Server with Cursor IDE and Claude AI.
 
 ## Prerequisites
 
-1. Cursor editor installed ([Download from cursor.sh](https://cursor.sh))
-2. UniAuto MCP Server installed and running
-3. Smithery.ai account (for simpler setup)
+- Cursor IDE installed (latest version)
+- UniAuto MCP Server installed and running
+- Smithery.ai CLI installed (recommended)
+- Claude API key configured
 
-## Setup Steps
+## Installation Steps
 
-### 1. Install Smithery CLI
-
-If you haven't already, install the Smithery CLI tool:
-
-```bash
-npm install -g @smithery/cli
-```
-
-### 2. Connect UniAuto to Smithery
-
-```bash
-smithery connect uniauto-mcp-server
-```
-
-### 3. Configure Cursor
+### Step 1: Configure Cursor Settings
 
 1. Open Cursor
-2. Go to Settings > AI Settings
-3. Enable "Machine Control Protocol (MCP)"
-4. Under MCP Tools, add UniAuto:
-   - Tool Name: UniAuto
-   - Manifest URL: http://localhost:3000/api/mcp/manifest
-   - Invoke URL: http://localhost:3000/api/mcp/invoke
+2. Go to Settings (⚙️ icon or Ctrl+,)
+3. Search for "mcp" or navigate to the AI settings section
+4. Enable Model Context Protocol (MCP) integration
 
-Alternatively, if using Smithery, simply enable "Use Smithery.ai for Tools" in the settings.
+Add the UniAuto MCP server as a tool by adding the following configuration:
+
+```json
+{
+  "ai.mcp.enabled": true,
+  "ai.mcp.tools": [
+    {
+      "name": "uniauto-mcp-server",
+      "url": "http://localhost:3000/api"
+    }
+  ]
+}
+```
+
+### Step 2: Configure UniAuto MCP Server
+
+Ensure your MCP server is properly configured with the Claude API key in the `.env` file:
+
+```
+CLAUDE_API_KEY=your_claude_api_key
+CLAUDE_MODEL=claude-3-7-sonnet-20240229
+```
+
+Start the MCP server:
+
+```bash
+npm run dev
+```
+
+### Step 3: Connect via Smithery (Optional but Recommended)
+
+For more reliable integration, use Smithery:
+
+```bash
+# Install Smithery if you haven't already
+npm install -g @smithery/cli
+
+# Connect UniAuto to Smithery
+smithery connect uniauto-mcp-server
+
+# Connect Claude to Smithery
+smithery connect --assistant claude
+```
 
 ## Testing with Cursor + Claude
 

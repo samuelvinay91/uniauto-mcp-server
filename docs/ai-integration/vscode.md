@@ -1,51 +1,38 @@
-# VSCode Integration Guide
+# VSCode Integration with UniAuto MCP Server
 
-## Overview
-
-This guide explains how to integrate UniAuto MCP Server with VSCode and AI assistants, enabling automated testing directly from your development environment.
+This guide explains how to set up and use UniAuto MCP Server with VSCode and the Claude Extension.
 
 ## Prerequisites
 
-1. VSCode installed
-2. Node.js (v14+) installed
-3. UniAuto MCP Server installed
-4. Smithery.ai account (optional but recommended)
+- Visual Studio Code (latest version recommended)
+- VSCode Claude Extension installed
+- UniAuto MCP Server installed and running
+- Smithery.ai CLI installed
 
-## Installation
+## Installation Steps
 
-### Option 1: Using Extensions
+### Step 1: Install the Claude VSCode Extension
 
-#### Claude Extension for VSCode
+1. Open VSCode
+2. Go to Extensions (Ctrl+Shift+X)
+3. Search for "Claude AI Assistant"
+4. Click Install
 
-1. Install the Claude for VSCode extension from the marketplace
-2. Configure it to use Smithery.ai and UniAuto:
+### Step 2: Configure Claude Extension for Smithery Integration
+
+1. Open VSCode settings (File > Preferences > Settings or Ctrl+,)
+2. Search for "claude smithery"
+3. Check the box to enable Smithery integration
+4. If needed, set the path to the Smithery executable
+5. Add "uniauto-mcp-server" to the list of enabled tools
+
+Alternatively, add these settings directly to your `settings.json`:
 
 ```json
-// settings.json
 {
   "claude.smithery.enabled": true,
-  "claude.smithery.tools": ["uniauto-mcp-server"],
-  "claude.smithery.serverUrl": "http://localhost:3000"
-}
-```
-
-#### Generic MCP Extension
-
-Alternatively, use the generic MCP Tools extension:
-
-1. Install the MCP Tools extension from the marketplace
-2. Configure it to connect to UniAuto:
-
-```json
-// settings.json
-{
-  "mcp-tools.tools": [
-    {
-      "name": "UniAuto",
-      "manifestUrl": "http://localhost:3000/api/mcp/manifest",
-      "invokeUrl": "http://localhost:3000/api/mcp/invoke"
-    }
-  ]
+  "claude.smithery.path": "/path/to/smithery/executable", // Only if not in PATH
+  "claude.smithery.tools": ["uniauto-mcp-server"]
 }
 ```
 

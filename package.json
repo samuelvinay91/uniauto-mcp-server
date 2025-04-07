@@ -7,7 +7,11 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "lint": "eslint src",
-    "test": "jest"
+    "test": "jest",
+    "test:generate": "jest tests/integration/test-generation.test.js",
+    "test:ai": "jest tests/integration/ai-test-generation.test.js",
+    "demo:generate": "node examples/test-generation-demo.js",
+    "demo:advanced": "node examples/advanced-testing-demo.js"
   },
   "keywords": [
     "automation",
