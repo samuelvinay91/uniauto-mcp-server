@@ -216,6 +216,32 @@ Once connected, you can use Claude Code, Claude Web, VSCode with Claude Extensio
 
 See the [Smithery Setup Guide](docs/setup/SMITHERY-CLAUDE-GUIDE.md) for detailed instructions.
 
+### Claude Desktop Integration
+
+UniAuto MCP Server can be directly integrated with Claude Desktop application for seamless testing capabilities:
+
+```bash
+# On Windows, run the setup script (requires PowerShell):
+scripts/setup-claude-desktop.bat
+
+# On macOS/Linux:
+node scripts/setup-claude-desktop.js
+```
+
+The setup script will:
+1. Configure your environment variables
+2. Set up the Claude Desktop MCP configuration
+3. Connect UniAuto MCP Server to Claude Desktop
+
+After setup, you can test the integration:
+
+```bash
+# Test the connection
+node scripts/test-claude-desktop.js
+```
+
+See the [Claude Desktop MCP Setup Guide](docs/claude-desktop-mcp-setup.md) for detailed instructions.
+
 ### AI Assistant Integration
 
 UniAuto works with various AI assistants:
