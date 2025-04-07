@@ -14,6 +14,6 @@
   },
   "ai": {
     "defaultModel": "claude-3-7-sonnet",
-    "apiKey": "YOUR_API_KEY"
+    "apiKey": "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"
   }
 }

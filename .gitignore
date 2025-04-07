@@ -60,3 +60,6 @@ $RECYCLE.BIN/
 # Temporary files
 *~
 \#*\#
+
+# Configuration files containing secrets
+config/uniauto-config.json

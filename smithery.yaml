@@ -3,23 +3,57 @@ startCommand:
   configSchema:
     type: object
     properties:
-      port:
-        type: number
-        default: 3000
-        description: "Port on which the server runs"
-      claudeApiKey:
-        type: string
-        description: "Claude API Key for AI features"
-      claudeModel:
-        type: string
-        default: "claude-3-7-sonnet-20240229"
-        description: "Claude model to use for AI features"
-      logLevel:
+      server:
+        type: object
+        properties:
+          port:
+            type: number
+            default: 3000
+            description: "Port on which the server runs"
+          host:
+            type: string
+            default: "localhost"
+            description: "Host on which the server runs"
+        required: ["port", "host"]
+      automation:
+        type: object
+        properties:
+          headless:
+            type: boolean
+            default: false
+          browser:
+            type: string
+            default: "chromium"
+          slowMo:
+            type: number
+            default: 50
+      selfHealing:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            default: true
+          strategies:
+            type: array
+            items:
+              type: string
+            default: ["repository", "role", "visual", "text"]
+      ai:
+        type: object
+        properties:
+          defaultModel:
+            type: string
+            description: "Default AI model to use"
+          apiKey:
+            type: string
+            description: "API Key for AI features (e.g., Claude)"
+        required: ["apiKey"]
+      logLevel: # Keep logLevel at the root if it's intended to be separate
         type: string
         default: "info"
         enum: ["error", "warn", "info", "debug"]
         description: "Logging level for the server"
-    required: ["claudeApiKey"]
+    required: ["server", "ai"] # Adjust top-level required fields
   commandFunction: |-
     (config) => ({
       "command": "node",
@@ -27,13 +61,13 @@ startCommand:
         "src/index.js"
       ],
       "env": {
-        "PORT": config.port.toString(),
+        "PORT": config.server.port.toString(),
         "NODE_ENV": "production",
-        "CLAUDE_API_KEY": config.claudeApiKey,
-        "CLAUDE_MODEL": config.claudeModel,
+        "CLAUDE_API_KEY": config.ai.apiKey,
+        "CLAUDE_MODEL": config.ai.defaultModel || "claude-3-7-sonnet-20240229", # Use default if not provided
         "LOG_LEVEL": config.logLevel || "info",
         "LOG_DIR": "logs",
-        "HEADLESS": "true",
+        "HEADLESS": (config.automation && config.automation.headless !== undefined) ? config.automation.headless.toString() : "true", # Handle potential missing automation config
         "BROWSER": "chromium"
       }
     })
