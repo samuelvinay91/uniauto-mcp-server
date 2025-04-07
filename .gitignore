@@ -14,6 +14,11 @@ yarn-debug.log
 .env.test.local
 .env.production.local
 
+# Config files with sensitive information
+config/uniauto-config.json
+# Exclude the example config
+!config/uniauto-config.example.json
+
 # Build and output
 dist/
 build/
