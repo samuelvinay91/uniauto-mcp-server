@@ -4,9 +4,21 @@ const { logger } = require('../utils/logger');
 const { handleAutomationCommand } = require('../core/mock-automation');
 const { createTestCase, getAllTestCases, getTestCaseById, updateTestCase, deleteTestCase } = require('./test-cases');
 const { aiProcessing, aiTestGeneration } = require('./ai-processing');
-const { validateMcpRequest, formatMcpResponse, formatMcpErrorResponse } = require('../utils/mcp-validator');
+const { 
+  validateMcpRequest, 
+  formatMcpResponse, 
+  formatMcpErrorResponse,
+  detectProtocolType,
+  normalizeRequest,
+  formatResponse,
+  PROTOCOL_TYPES,
+  JSON_RPC_ERRORS
+} = require('../utils/mcp-validator');
 const { generateTests, generateFullTestSuite, scaffoldTestProject, TEST_FRAMEWORKS, TEST_STYLES, OUTPUT_FORMATS } = require('../core/test-generator');
 const { visualCompare, accessibilityTest, performanceTest, networkTrace, runTestSuite } = require('../core/advanced-testing');
+const desktopIntegration = require('../core/desktop-integration');
+const fs = require('fs');
+const path = require('path');
 
 const router = express.Router();
 
@@ -244,68 +256,161 @@ router.get('/test-frameworks', (req, res) => {
   });
 });
 
-// Model Context Protocol (MCP) integration endpoints
+// Keep alive interval for maintaining connections
+let keepAliveInterval = null;
+
+// Unified endpoint for all protocol types
 router.post('/mcp/invoke', async (req, res) => {
   try {
-    // Validate the incoming Model Context Protocol request
+    // 1. Detect protocol type
+    const protocolType = detectProtocolType(req);
+    logger.info(`Request received with protocol: ${protocolType}`);
+    
+    // 2. Validate request
     const validation = validateMcpRequest(req);
     if (!validation.isValid) {
-      return res.status(400).json(formatMcpErrorResponse(
-        new Error(validation.error),
-        req.body.executionId
-      ));
+      logger.warn(`Invalid ${protocolType} request: ${validation.error}`);
+      
+      if (protocolType === PROTOCOL_TYPES.JSON_RPC) {
+        return res.json({
+          jsonrpc: '2.0',
+          id: req.body.id,
+          error: {
+            code: JSON_RPC_ERRORS.INVALID_REQUEST,
+            message: validation.error
+          }
+        });
+      } else {
+        return res.status(400).json(formatMcpErrorResponse(
+          new Error(validation.error),
+          req.body.executionId
+        ));
+      }
     }
     
-    // Parse Model Context Protocol request parameters
-    const { action, parameters, executionId } = req.body;
+    // 3. Normalize the request to a standard format
+    const normalizedRequest = normalizeRequest(req, protocolType);
+    const { action, parameters, metadata } = normalizedRequest;
     
-    logger.info(`Model Context Protocol invoke: ${action}, executionId: ${executionId}`);
+    logger.info(`Processing action: ${action}, protocol: ${protocolType}`);
     
-    // Map Model Context Protocol actions to internal commands
-    let command, params;
-    
-    switch (action) {
-      case 'navigate':
-        command = 'navigate';
-        params = { url: parameters.url };
-        break;
+    // 4. Special handling for JSON-RPC protocol methods that need direct response
+    if (protocolType === PROTOCOL_TYPES.JSON_RPC) {
+      if (req.body.method === 'initialize') {
+        // Extract client info from params
+        const clientName = req.body.params?.clientInfo?.name || 'unknown';
+        const clientVersion = req.body.params?.clientInfo?.version || '0.0.0';
+        const protocolVersion = req.body.params?.protocolVersion || 'unknown';
         
-      case 'click':
-        command = 'click';
-        params = { selector: parameters.selector };
-        break;
+        logger.info(`Client connected: ${clientName} v${clientVersion} (protocol: ${protocolVersion})`);
         
-      case 'type':
-        command = 'type';
-        params = { 
-          selector: parameters.selector, 
-          text: parameters.text, 
-          options: { clearFirst: parameters.clearFirst } 
-        };
-        break;
+        // Setup keep-alive mechanism to prevent disconnection
+        setupKeepAlive();
         
-      case 'extract':
-        command = 'extract';
-        params = { 
-          selector: parameters.selector, 
-          attribute: parameters.attribute || 'textContent' 
-        };
-        break;
+        // Read manifest for server info
+        const manifestPath = path.join(process.cwd(), 'mcp-manifest.json');
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
         
-      case 'screenshot':
-        command = 'screenshot';
-        params = { fileName: `${executionId}-${Date.now()}.png` };
-        break;
-        
-      case 'wait':
-        command = 'wait';
-        params = { milliseconds: parameters.milliseconds || 1000 };
-        break;
-        
-      case 'generate_tests':
-        // Handle test generation action
+        return res.json({
+          jsonrpc: '2.0',
+          id: req.body.id,
+          result: {
+            serverInfo: {
+              name: manifest.name || 'UniAuto',
+              version: manifest.version || '1.0.0'
+            },
+            capabilities: {
+              methods: [
+                'initialize',
+                'getManifest',
+                'navigate',
+                'click',
+                'type',
+                'extract',
+                'screenshot',
+                'execute',
+                'desktop_click',
+                'desktop_type'
+              ]
+            }
+          }
+        });
+      }
+      
+      if (req.body.method === 'getManifest') {
         try {
-          const result = await generateTests({
+          const manifestPath = path.join(process.cwd(), 'mcp-manifest.json');
+          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+          
+          return res.json({
+            jsonrpc: '2.0',
+            id: req.body.id,
+            result: manifest
+          });
+        } catch (error) {
+          logger.error(`GetManifest error: ${error.message}`);
+          return res.json({
+            jsonrpc: '2.0',
+            id: req.body.id,
+            error: {
+              code: JSON_RPC_ERRORS.INTERNAL_ERROR,
+              message: `Error getting manifest: ${error.message}`
+            }
+          });
+        }
+      }
+    }
+    
+    // 5. Process the action and generate a result
+    let result;
+    
+    try {
+      switch (action) {
+        case 'navigate':
+          result = await handleAutomationCommand('navigate', { url: parameters.url });
+          break;
+          
+        case 'click':
+          result = await handleAutomationCommand('click', { selector: parameters.selector });
+          break;
+          
+        case 'type':
+          result = await handleAutomationCommand('type', { 
+            selector: parameters.selector, 
+            text: parameters.text, 
+            options: { clearFirst: parameters.clearFirst } 
+          });
+          break;
+          
+        case 'extract':
+          result = await handleAutomationCommand('extract', { 
+            selector: parameters.selector, 
+            attribute: parameters.attribute || 'textContent' 
+          });
+          break;
+          
+        case 'screenshot':
+          result = await handleAutomationCommand('screenshot', { 
+            fileName: `${metadata.executionId || Date.now()}-${Date.now()}.png` 
+          });
+          break;
+          
+        case 'wait':
+          result = await handleAutomationCommand('wait', { 
+            milliseconds: parameters.milliseconds || 1000 
+          });
+          break;
+          
+        case 'desktop_click':
+          result = await desktopIntegration.desktopClick(parameters.x, parameters.y);
+          break;
+          
+        case 'desktop_type':
+          result = await desktopIntegration.desktopType(parameters.text);
+          break;
+          
+        case 'generate_tests':
+          result = await generateTests({
             url: parameters.url,
             framework: parameters.framework,
             style: parameters.style,
@@ -314,142 +419,114 @@ router.post('/mcp/invoke', async (req, res) => {
             outputPath: parameters.outputPath,
             additionalContext: parameters.additionalContext
           });
+          break;
           
-          return res.json(formatMcpResponse(action, result, executionId));
-        } catch (error) {
-          return res.status(500).json(formatMcpErrorResponse(error, executionId));
-        }
-        
-      case 'generate_test_suite':
-        // Handle full test suite generation
-        try {
-          const result = await generateFullTestSuite(parameters.url, {
+        case 'generate_test_suite':
+          result = await generateFullTestSuite(parameters.url, {
             framework: parameters.framework,
             format: parameters.format,
             outputDir: parameters.outputDir,
             additionalContext: parameters.additionalContext
           });
+          break;
           
-          return res.json(formatMcpResponse(action, result, executionId));
-        } catch (error) {
-          return res.status(500).json(formatMcpErrorResponse(error, executionId));
-        }
-        
-      case 'scaffold_project':
-        // Handle project scaffolding
-        try {
-          const result = await scaffoldTestProject(parameters.framework, parameters.outputDir);
-          return res.json(formatMcpResponse(action, result, executionId));
-        } catch (error) {
-          return res.status(500).json(formatMcpErrorResponse(error, executionId));
-        }
-        
-      case 'list_frameworks':
-        // Return available test frameworks, styles, and formats
-        return res.json(formatMcpResponse(action, {
-          frameworks: Object.values(TEST_FRAMEWORKS),
-          styles: Object.values(TEST_STYLES),
-          formats: Object.values(OUTPUT_FORMATS)
-        }, executionId));
-      
-      case 'visual_compare':
-        // Handle visual comparison action
-        try {
-          const result = await visualCompare({
+        case 'scaffold_project':
+          result = await scaffoldTestProject(parameters.framework, parameters.outputDir);
+          break;
+          
+        case 'list_frameworks':
+          result = {
+            frameworks: Object.values(TEST_FRAMEWORKS),
+            styles: Object.values(TEST_STYLES),
+            formats: Object.values(OUTPUT_FORMATS)
+          };
+          break;
+          
+        case 'visual_compare':
+          result = await visualCompare({
             url: parameters.url,
             selector: parameters.selector,
             baselineName: parameters.baselineName,
             updateBaseline: parameters.updateBaseline,
             threshold: parameters.threshold
           });
+          break;
           
-          return res.json(formatMcpResponse(action, result, executionId));
-        } catch (error) {
-          return res.status(500).json(formatMcpErrorResponse(error, executionId));
-        }
-        
-      case 'accessibility_test':
-        // Handle accessibility testing action
-        try {
-          const result = await accessibilityTest({
+        case 'accessibility_test':
+          result = await accessibilityTest({
             url: parameters.url,
             standard: parameters.standard
           });
+          break;
           
-          return res.json(formatMcpResponse(action, result, executionId));
-        } catch (error) {
-          return res.status(500).json(formatMcpErrorResponse(error, executionId));
-        }
-        
-      case 'performance_test':
-        // Handle performance testing action
-        try {
-          const result = await performanceTest({
+        case 'performance_test':
+          result = await performanceTest({
             url: parameters.url,
             iterations: parameters.iterations
           });
+          break;
           
-          return res.json(formatMcpResponse(action, result, executionId));
-        } catch (error) {
-          return res.status(500).json(formatMcpErrorResponse(error, executionId));
-        }
-        
-      case 'network_trace':
-        // Handle network tracing action
-        try {
-          const result = await networkTrace({
+        case 'network_trace':
+          result = await networkTrace({
             url: parameters.url,
             apiEndpoints: parameters.apiEndpoints
           });
+          break;
           
-          return res.json(formatMcpResponse(action, result, executionId));
-        } catch (error) {
-          return res.status(500).json(formatMcpErrorResponse(error, executionId));
-        }
-        
-      case 'run_test_suite':
-        // Handle test suite action
-        try {
-          const result = await runTestSuite({
+        case 'run_test_suite':
+          result = await runTestSuite({
             url: parameters.url,
             visual: parameters.visual,
             accessibility: parameters.accessibility,
             performance: parameters.performance,
             network: parameters.network
           });
+          break;
           
-          return res.json(formatMcpResponse(action, result, executionId));
-        } catch (error) {
-          return res.status(500).json(formatMcpErrorResponse(error, executionId));
-        }
-        
-      default:
-        return res.status(400).json(formatMcpErrorResponse(
-          new Error(`Unsupported Model Context Protocol action: ${action}`),
-          executionId
-        ));
+        default:
+          throw new Error(`Unsupported action: ${action}`);
+      }
+      
+      // 6. Format the response based on protocol type
+      const response = formatResponse(normalizedRequest, result);
+      
+      // 7. Send response
+      res.json(response);
+      
+    } catch (error) {
+      logger.error(`Error executing ${action}: ${error.message}`);
+      
+      // Format error response based on protocol type
+      const errorResponse = formatResponse(normalizedRequest, null, error);
+      
+      if (protocolType === PROTOCOL_TYPES.JSON_RPC) {
+        return res.json(errorResponse);
+      } else {
+        return res.status(500).json(errorResponse);
+      }
     }
-    
-    // Execute automation command
-    const result = await handleAutomationCommand(command, params);
-    
-    // Format response according to Model Context Protocol specification using the validator
-    res.json(formatMcpResponse(action, result, executionId));
   } catch (error) {
-    // Log error with MCP context
-    logger.error(`Model Context Protocol invoke error: ${error.message}`);
+    logger.error(`Unhandled error in invoke endpoint: ${error.message}`);
     
-    // Return error response in MCP-compliant format using the validator
-    res.status(500).json(formatMcpErrorResponse(error, req.body.executionId));
+    // Fallback error response if protocol detection or normalization fails
+    if (req.body && req.body.jsonrpc === '2.0') {
+      return res.json({
+        jsonrpc: '2.0',
+        id: req.body.id,
+        error: {
+          code: JSON_RPC_ERRORS.INTERNAL_ERROR,
+          message: error.message
+        }
+      });
+    } else {
+      res.status(500).json(formatMcpErrorResponse(error, req.body && req.body.executionId));
+    }
   }
 });
 
 // Model Context Protocol (MCP) manifest endpoint
 router.get('/mcp/manifest', (req, res) => {
   // Return tool manifest in Model Context Protocol format
-  const fs = require('fs');
-  const path = require('path');
-  
   try {
     // Read manifest directly from file to ensure consistency
     const manifestPath = path.join(process.cwd(), 'mcp-manifest.json');
@@ -511,6 +588,21 @@ router.get('/mcp/manifest', (req, res) => {
           ]
         },
         {
+          name: 'desktop_click',
+          description: 'Click at specific coordinates on the desktop',
+          parameters: [
+            { name: 'x', type: 'number', description: 'X coordinate', required: true },
+            { name: 'y', type: 'number', description: 'Y coordinate', required: true }
+          ]
+        },
+        {
+          name: 'desktop_type',
+          description: 'Type text on the desktop',
+          parameters: [
+            { name: 'text', type: 'string', description: 'Text to type', required: true }
+          ]
+        },
+        {
           name: 'generate_tests',
           description: 'Generate test cases for an application in a specific framework and style',
           parameters: [
@@ -561,5 +653,24 @@ router.get('/mcp/manifest', (req, res) => {
     });
   }
 });
+
+/**
+ * Set up a keep-alive mechanism to ensure the server stays connected
+ * with Claude Desktop
+ */
+function setupKeepAlive() {
+  // Clear any existing interval
+  if (keepAliveInterval) {
+    clearInterval(keepAliveInterval);
+  }
+  
+  // Set interval to log heartbeat message
+  keepAliveInterval = setInterval(() => {
+    logger.debug('Keep-alive heartbeat');
+  }, 1000);
+  
+  // Allow process to exit gracefully if needed
+  keepAliveInterval.unref();
+}
 
 module.exports = router;
