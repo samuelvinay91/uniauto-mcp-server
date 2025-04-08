@@ -31,6 +31,30 @@ const PROTOCOL_TYPES = {
  * @returns {String} The detected protocol type
  */
 function detectProtocolType(req) {
+  // First try to detect based on the headers and user agent
+  // This requires the integrations module, but avoid circular dependencies
+  // by not importing at the top level
+  try {
+    // Dynamically require to avoid circular dependency
+    const { detectIntegrationType, INTEGRATION_TYPES, getProtocolAdapter } = require('./integrations');
+    
+    // Get the integration type
+    const integrationType = detectIntegrationType(req);
+    
+    // Get the protocol adapter for that integration
+    const adapter = getProtocolAdapter(integrationType);
+    
+    // Return the protocol type from the adapter
+    if (adapter && adapter.type) {
+      return adapter.type;
+    }
+  } catch (error) {
+    // If there's an error or the integrations module isn't available yet,
+    // fall back to the standard detection logic
+  }
+  
+  // Standard detection logic
+  
   // Check for JSON-RPC 2.0
   if (req.body && req.body.jsonrpc === '2.0' && req.body.method) {
     return PROTOCOL_TYPES.JSON_RPC;

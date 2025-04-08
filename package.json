@@ -11,7 +11,12 @@
     "test:generate": "jest tests/integration/test-generation.test.js",
     "test:ai": "jest tests/integration/ai-test-generation.test.js",
     "demo:generate": "node examples/test-generation-demo.js",
-    "demo:advanced": "node examples/advanced-testing-demo.js"
+    "demo:advanced": "node examples/advanced-testing-demo.js",
+    "setup:claude-desktop": "node scripts/setup-claude-desktop.js",
+    "setup:integrations": "node scripts/generate-integration-configs.js",
+    "test:connection": "node test-connection.js",
+    "claude:helper": "bash scripts/run-with-claude.sh",
+    "smithery:connect": "bash scripts/setup-smithery.sh"
   },
   "keywords": [
     "automation",
