@@ -1,152 +1,208 @@
-#!/usr/bin/env node
-
+/**
+ * Claude Desktop Setup Helper
+ * This script checks and configures the MCP server for Claude Desktop integration
+ */
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
-const readline = require('readline');
+const http = require('http');
+const { execSync } = require('child_process');
 
-// Create readline interface for user input
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
-
-// Determine current directory path
-const currentDir = path.resolve(process.cwd());
-
-// Determine Claude Desktop config path based on OS
-let claudeConfigPath;
-if (process.platform === 'win32') {
-  claudeConfigPath = path.join(process.env.APPDATA, 'Claude', 'claude_desktop_config.json');
-} else if (process.platform === 'darwin') {
-  claudeConfigPath = path.join(os.homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
-} else {
-  // Linux or other platform
-  claudeConfigPath = path.join(os.homedir(), '.config', 'Claude', 'claude_desktop_config.json');
+// Utility function to make HTTP requests
+function makeRequest(url) {
+  return new Promise((resolve, reject) => {
+    http.get(url, (res) => {
+      let data = '';
+      
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      
+      res.on('end', () => {
+        try {
+          const parsedData = JSON.parse(data);
+          resolve(parsedData);
+        } catch (e) {
+          resolve(data);
+        }
+      });
+    }).on('error', (err) => {
+      reject(err);
+    });
+  });
 }
 
-console.log(`\n=== UniAuto MCP Server - Claude Desktop Setup ===\n`);
-console.log(`This script will configure Claude Desktop to use the UniAuto MCP server.`);
-
-// Function to prompt for the Claude API key
-const promptForApiKey = () => {
-  return new Promise((resolve) => {
-    rl.question('Enter your Claude API key: ', (apiKey) => {
-      if (!apiKey.trim()) {
-        console.log('API key cannot be empty. Please try again.');
-        return promptForApiKey().then(resolve);
-      }
-      resolve(apiKey.trim());
-    });
-  });
-};
-
-// Function to prompt for the port
-const promptForPort = () => {
-  return new Promise((resolve) => {
-    rl.question('Enter the port for UniAuto MCP server (default: 3001): ', (port) => {
-      port = port.trim();
-      if (!port) port = '3001';
-      if (!/^\d+$/.test(port)) {
-        console.log('Port must be a number. Please try again.');
-        return promptForPort().then(resolve);
-      }
-      resolve(port);
-    });
-  });
-};
-
-// Function to prompt for the Claude model
-const promptForModel = () => {
-  return new Promise((resolve) => {
-    rl.question('Enter the Claude model to use (default: claude-3-7-sonnet-20240229): ', (model) => {
-      model = model.trim();
-      if (!model) model = 'claude-3-7-sonnet-20240229';
-      resolve(model);
-    });
-  });
-};
-
-// Main function
-async function main() {
+// Check if server is running
+async function checkServer() {
   try {
-    // Check if .env file exists
-    const envPath = path.join(currentDir, '.env');
-    if (!fs.existsSync(envPath)) {
-      console.log('Warning: .env file not found. Creating one from .env.sample...');
-      if (fs.existsSync(path.join(currentDir, '.env.sample'))) {
-        fs.copyFileSync(path.join(currentDir, '.env.sample'), envPath);
-      } else if (fs.existsSync(path.join(currentDir, '.env.example'))) {
-        fs.copyFileSync(path.join(currentDir, '.env.example'), envPath);
-      } else {
-        console.log('Error: No .env.sample or .env.example file found. Please create a .env file manually.');
-        process.exit(1);
-      }
-    }
-
-    // Get user input
-    const apiKey = await promptForApiKey();
-    const port = await promptForPort();
-    const model = await promptForModel();
-
-    // Update .env file with user input
-    let envContent = fs.readFileSync(envPath, 'utf8');
-    envContent = envContent.replace(/CLAUDE_API_KEY=.*/g, `CLAUDE_API_KEY=${apiKey}`);
-    envContent = envContent.replace(/CLAUDE_MODEL=.*/g, `CLAUDE_MODEL=${model}`);
-    envContent = envContent.replace(/PORT=.*/g, `PORT=${port}`);
-    fs.writeFileSync(envPath, envContent);
-    
-    console.log('\n.env file updated successfully.');
-
-    // Create or update Claude Desktop config
-    let claudeConfig = {};
-    if (fs.existsSync(claudeConfigPath)) {
-      try {
-        claudeConfig = JSON.parse(fs.readFileSync(claudeConfigPath, 'utf8'));
-        console.log('Found existing Claude Desktop configuration.');
-      } catch (error) {
-        console.log('Error parsing existing Claude Desktop configuration. Creating new configuration.');
-      }
-    } else {
-      console.log('Claude Desktop configuration file not found. Creating new configuration.');
-      // Ensure directory exists
-      fs.mkdirSync(path.dirname(claudeConfigPath), { recursive: true });
-    }
-
-    // Ensure mcpServers object exists
-    if (!claudeConfig.mcpServers) {
-      claudeConfig.mcpServers = {};
-    }
-
-    // Add or update UniAuto MCP server configuration with proper MCP flags
-    claudeConfig.mcpServers.uniauto = {
-      command: "node",
-      args: [path.join(currentDir, "src", "index.js"), "--mcp-server"],
-      env: {
-        CLAUDE_API_KEY: apiKey,
-        CLAUDE_MODEL: model,
-        PORT: port,
-        NODE_ENV: "development",
-        // Adding specific MCP environment variables to ensure proper communication
-        MCP_ENABLED: "true",
-        LOG_TO_STDERR: "true"
-      },
-      disabled: false,
-      autoApprove: []
-    };
-
-    // Write updated config to file
-    fs.writeFileSync(claudeConfigPath, JSON.stringify(claudeConfig, null, 2));
-    console.log(`\nClaude Desktop configuration updated at: ${claudeConfigPath}`);
-
-    console.log('\nSetup complete! You can now start the UniAuto MCP server with "npm start"');
-    console.log('Then open Claude Desktop and try the example prompts from the documentation.');
-    
+    console.log('Checking if MCP server is running...');
+    const manifest = await makeRequest('http://localhost:3000/api/mcp/manifest');
+    console.log('✅ MCP server is running');
+    return true;
   } catch (error) {
-    console.error('Error during setup:', error);
-  } finally {
-    rl.close();
+    console.log('❌ MCP server is not running');
+    return false;
   }
 }
 
-main();
+// Update MCP manifest for desktop integration
+function updateManifest() {
+  console.log('\nEnsuring MCP manifest is configured for Claude Desktop...');
+  
+  const manifestPath = path.join(__dirname, '..', 'mcp-manifest.json');
+  
+  try {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    
+    // Check if desktop capabilities are already present
+    if (!manifest.capabilities.includes('desktop_automation')) {
+      manifest.capabilities.push('desktop_automation');
+      console.log('✅ Added desktop_automation capability');
+    } else {
+      console.log('✓ desktop_automation capability already present');
+    }
+    
+    // Make sure desktop actions are included
+    let hasDesktopClick = false;
+    let hasDesktopType = false;
+    
+    for (const action of manifest.actions) {
+      if (action.name === 'desktop_click') hasDesktopClick = true;
+      if (action.name === 'desktop_type') hasDesktopType = true;
+    }
+    
+    if (!hasDesktopClick) {
+      manifest.actions.push({
+        "name": "desktop_click",
+        "description": "Click at specific coordinates on the desktop",
+        "parameters": [
+          { "name": "x", "type": "number", "description": "X coordinate", "required": true },
+          { "name": "y", "type": "number", "description": "Y coordinate", "required": true }
+        ]
+      });
+      console.log('✅ Added desktop_click action');
+    }
+    
+    if (!hasDesktopType) {
+      manifest.actions.push({
+        "name": "desktop_type",
+        "description": "Type text on the desktop",
+        "parameters": [
+          { "name": "text", "type": "string", "description": "Text to type", "required": true }
+        ]
+      });
+      console.log('✅ Added desktop_type action');
+    }
+    
+    // Update the manifest file
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+    console.log('✅ MCP manifest updated successfully');
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to update MCP manifest:', error.message);
+    return false;
+  }
+}
+
+// Update Smithery config if it exists
+function updateSmitheryConfig() {
+  console.log('\nUpdating Smithery configuration...');
+  
+  const yamlPath = path.join(__dirname, '..', 'smithery.yaml');
+  const jsonPath = path.join(__dirname, '..', 'smithery.json');
+  
+  try {
+    // Update smithery.json if it exists
+    if (fs.existsSync(jsonPath)) {
+      const config = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+      
+      if (!config.capabilities || !config.capabilities.includes('desktop_automation')) {
+        config.capabilities = config.capabilities || [];
+        config.capabilities.push('desktop_automation');
+        fs.writeFileSync(jsonPath, JSON.stringify(config, null, 2));
+        console.log('✅ Updated smithery.json with desktop capabilities');
+      } else {
+        console.log('✓ smithery.json already has desktop capabilities');
+      }
+    }
+    
+    // Update .env file if needed
+    const envPath = path.join(__dirname, '..', '.env');
+    if (fs.existsSync(envPath)) {
+      let envContent = fs.readFileSync(envPath, 'utf8');
+      
+      if (!envContent.includes('ENABLE_DESKTOP_INTEGRATION')) {
+        envContent += '\nENABLE_DESKTOP_INTEGRATION=true\n';
+        fs.writeFileSync(envPath, envContent);
+        console.log('✅ Updated .env with ENABLE_DESKTOP_INTEGRATION flag');
+      } else {
+        console.log('✓ .env already has ENABLE_DESKTOP_INTEGRATION flag');
+      }
+    }
+    
+    console.log('✅ Configuration files updated successfully');
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to update configuration:', error.message);
+    return false;
+  }
+}
+
+// Main function
+async function main() {
+  console.log('==============================================');
+  console.log('UniAuto MCP Server - Claude Desktop Setup');
+  console.log('==============================================\n');
+  
+  // Step 1: Update the manifest
+  const manifestUpdated = updateManifest();
+  
+  // Step 2: Update Smithery config
+  const configUpdated = updateSmitheryConfig();
+  
+  // Step 3: Check if server is running
+  const serverRunning = await checkServer();
+  
+  if (!serverRunning) {
+    console.log('\n⚠️ MCP server is not running. Starting it now...');
+    try {
+      // Start the server in a detached process
+      require('child_process').spawn('node', ['src/index.js'], {
+        detached: true,
+        stdio: 'ignore'
+      }).unref();
+      
+      console.log('✅ MCP server started');
+      console.log('Please wait a few seconds for the server to initialize...');
+      
+      // Wait for 5 seconds
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Check again
+      const serverRunningNow = await checkServer();
+      if (!serverRunningNow) {
+        console.log('❌ Failed to start the server. Please start it manually with: npm start');
+      }
+    } catch (error) {
+      console.error('❌ Failed to start the server:', error.message);
+      console.log('Please start it manually with: npm start');
+    }
+  }
+  
+  console.log('\n==============================================');
+  console.log('Setup Complete!');
+  console.log('==============================================');
+  console.log('\nTo connect with Claude Desktop:');
+  console.log('1. Make sure the server is running: npm start');
+  console.log('2. In Claude Desktop, click on "Settings" > "Tools"');
+  console.log('3. Click "Add Tool" and enter: http://localhost:3000/api/mcp/manifest');
+  console.log('4. Authorize the connection when prompted');
+  console.log('\nFor Smithery integration:');
+  console.log('1. Run: npx @smithery/cli connect --server localhost:3000/api');
+  console.log('2. Run: npx @smithery/cli connect --client claude');
+  console.log('\nHappy automating! 🚀');
+}
+
+// Run the script
+main().catch(console.error);

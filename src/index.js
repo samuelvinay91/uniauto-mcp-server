@@ -6,6 +6,8 @@ const path = require('path');
 const { setupWebsocketServer } = require('./core/websocket');
 const { initializeDatabase } = require('./core/database');
 const { logger } = require('./utils/logger');
+const configManager = require('./utils/config');
+const { errorMiddleware } = require('./utils/error-handler');
 const routes = require('./handlers/routes');
 
 // Check if script was called directly or from MCP
@@ -49,7 +51,7 @@ if (!fs.existsSync(logDir)) {
 
 // Setup Express app
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = configManager.get('port');
 
 // Middleware
 app.use(cors());
@@ -67,34 +69,27 @@ app.get('/', (req, res) => {
 // API Routes
 app.use('/api', routes);
 
+// Error handling middleware (must be after routes)
+app.use(errorMiddleware);
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'NotFoundError',
+    code: 'NOT_FOUND',
+    message: `Route ${req.method} ${req.path} not found`,
+    status: 404
+  });
+});
+
 // Initialize services
 async function startServer() {
   try {
-    consoleLog('- Environment:');
-    consoleLog(`  - NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
-    consoleLog(`  - PORT: ${PORT}`);
-    consoleLog(`  - MCP Mode: ${isMcpServerStart ? 'enabled' : 'disabled'}`);
-    consoleLog(`  - MONGODB_URI: ${process.env.MONGODB_URI ? 'configured' : 'not configured'}`);
-    consoleLog(`  - CLAUDE_API_KEY: ${process.env.CLAUDE_API_KEY ? 'configured' : 'not configured'}`);
-    consoleLog(`  - LOG_DIR: ${logDir}`);
+    logger.info(`Starting UniAuto MCP Server in ${configManager.get('environment')} mode`);
     
     // Connect to database if configured
-    if (process.env.MONGODB_URI) {
-      try {
-        consoleLog('- Connecting to MongoDB...');
-        await initializeDatabase();
-        consoleLog('- Connected to MongoDB successfully');
-      } catch (dbError) {
-        const errorMsg = `- MongoDB connection failed: ${dbError.message}`;
-        if (isMcpServerStart && logToStderr) {
-          process.stderr.write(`${errorMsg}\n`);
-        } else {
-          console.error(errorMsg);
-        }
-        logger.warn(`Continuing without MongoDB connection: ${dbError.message}`);
-      }
-    } else {
-      consoleLog('- No MongoDB URI configured, skipping database initialization');
+    if (configManager.get('mongodbUri')) {
+      await initializeDatabase();
     }
     
     // Start HTTP server
@@ -108,19 +103,10 @@ async function startServer() {
     });
     
     // Setup WebSocket server
-    try {
-      consoleLog('- Setting up WebSocket server...');
-      setupWebsocketServer(server);
-      consoleLog('- WebSocket server setup complete');
-    } catch (wsError) {
-      const errorMsg = `- WebSocket setup failed: ${wsError.message}`;
-      if (isMcpServerStart && logToStderr) {
-        process.stderr.write(`${errorMsg}\n`);
-      } else {
-        console.error(errorMsg);
-      }
-      logger.error(`WebSocket setup failed: ${wsError.message}`);
-    }
+    setupWebsocketServer(server);
+    
+    // Handle graceful shutdown
+    setupGracefulShutdown(server);
   } catch (error) {
     const fatalError = `\nFATAL ERROR: Failed to start server: ${error.message}`;
     if (isMcpServerStart && logToStderr) {
@@ -131,6 +117,35 @@ async function startServer() {
     logger.error(`Failed to start server: ${error.message}`);
     process.exit(1);
   }
+}
+
+/**
+ * Setup graceful shutdown handlers
+ * 
+ * @param {http.Server} server - The HTTP server instance
+ */
+function setupGracefulShutdown(server) {
+  // Handle SIGTERM and SIGINT (Ctrl+C)
+  const shutdownSignals = ['SIGTERM', 'SIGINT'];
+  
+  shutdownSignals.forEach(signal => {
+    process.on(signal, async () => {
+      logger.info(`${signal} signal received. Shutting down gracefully...`);
+      
+      // Close the HTTP server
+      server.close(() => {
+        logger.info('HTTP server closed');
+      });
+      
+      // Any other cleanup like database connections, etc.
+      // ...
+      
+      setTimeout(() => {
+        logger.info('Forcing shutdown after timeout');
+        process.exit(0);
+      }, 15000).unref(); // Allow process to exit if all connections are closed
+    });
+  });
 }
 
 startServer();

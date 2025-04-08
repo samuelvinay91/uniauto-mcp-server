@@ -1,8 +1,15 @@
-const Anthropic = require('@anthropic-ai/sdk');
 const { logger } = require('../utils/logger');
 const { handleAutomationCommand } = require('../core/mock-automation');
 const { generateTests, generateFullTestSuite } = require('../core/test-generator');
+const aiService = require('../utils/ai-service');
+const configManager = require('../utils/config');
 
+/**
+ * Process an AI task to generate automation steps
+ * 
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
 async function aiProcessing(req, res) {
   try {
     const { task, url, model, context } = req.body;
@@ -31,8 +38,15 @@ async function aiProcessing(req, res) {
       additionalContext: context || {}
     };
     
-    // Process with AI model (Claude or other)
-    const aiResponse = await processWithAI(aiContext, model);
+    // Build prompt for AI
+    const prompt = buildAutomationPrompt(aiContext);
+    
+    // Process with AI model using our shared service
+    const aiResponse = await aiService.processWithClaude({
+      prompt,
+      images: screenshot ? [{ path: screenshot.path }] : [],
+      model
+    });
     
     // Extract actionable steps from AI response
     const steps = parseAIResponseToSteps(aiResponse);
@@ -48,6 +62,11 @@ async function aiProcessing(req, res) {
   }
 }
 
+/**
+ * Get the current page URL from the automation
+ * 
+ * @returns {Promise<string|null>} Current URL or null if unavailable
+ */
 async function getCurrentPageUrl() {
   try {
     const result = await handleAutomationCommand('extract', {
@@ -61,18 +80,14 @@ async function getCurrentPageUrl() {
   }
 }
 
-async function processWithAI(context, modelName = 'claude') {
-  try {
-    // Create Anthropic client instance
-    const anthropic = new Anthropic({
-      apiKey: process.env.CLAUDE_API_KEY,
-    });
-    
-    // Prepare user message content
-    let content = [
-      {
-        type: 'text',
-        text: `You are an automation assistant. Your task is to help automate the following:
+/**
+ * Build a prompt for automation task processing
+ * 
+ * @param {Object} context - The automation context
+ * @returns {string} Formatted prompt for Claude
+ */
+function buildAutomationPrompt(context) {
+  return `You are an automation assistant. Your task is to help automate the following:
 
 ${context.task}
 
@@ -83,62 +98,15 @@ Additional context: ${JSON.stringify(context.additionalContext)}
 Please provide step-by-step instructions for automating this task. For each step, include:
 1. The command (navigate, click, type, etc.)
 2. The parameters (selector, text, etc.)
-3. A brief description of what the step does`
-      }
-    ];
-    
-    // Add screenshot if available
-    if (context.screenshot) {
-      try {
-        const fs = require('fs');
-        const path = require('path');
-        const screenshotPath = path.resolve(context.screenshot);
-        
-        if (fs.existsSync(screenshotPath)) {
-          const imageData = fs.readFileSync(screenshotPath);
-          const base64Image = imageData.toString('base64');
-          
-          content.push({
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: 'image/png',
-              data: base64Image
-            }
-          });
-          
-          logger.info('Screenshot added to Claude message');
-        }
-      } catch (err) {
-        logger.warn(`Could not add screenshot to message: ${err.message}`);
-      }
-    }
-    
-    // Determine which model to use
-    const model = process.env.CLAUDE_MODEL || 'claude-3-7-sonnet-20240229';
-    logger.info(`Using AI model: ${model}`);
-    
-    // Create the message
-    const response = await anthropic.messages.create({
-      model: model,
-      max_tokens: 4000,
-      messages: [
-        {
-          role: 'user',
-          content: content
-        }
-      ]
-    });
-    
-    // Extract the response text
-    const responseText = response.content[0].text;
-    return responseText;
-  } catch (error) {
-    logger.error(`AI API error: ${error.message}`);
-    throw new Error(`Failed to process with AI: ${error.message}`);
-  }
+3. A brief description of what the step does`;
 }
 
+/**
+ * Parse AI response into structured automation steps
+ * 
+ * @param {string} response - The AI response text
+ * @returns {Array<Object>} Parsed steps
+ */
 function parseAIResponseToSteps(response) {
   try {
     // Basic parsing of AI response to extract actionable steps

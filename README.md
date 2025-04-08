@@ -38,6 +38,15 @@ The MCP implementation is particularly forward-thinking:
 - Exposes a standardized API for automation actions
 - Enables seamless integration with Smithery.ai and other AI orchestration platforms
 - Creates a bridge between LLMs and web/desktop automation
+- Full Claude Desktop integration for comprehensive desktop automation
+
+#### Claude Desktop Integration
+The enhanced Claude Desktop integration enables:
+- Direct connection between Claude Desktop and your MCP server
+- Ability to perform desktop clicks at specific coordinates
+- Text input automation anywhere on the desktop
+- Combined web and desktop automation workflows
+- Easy setup with our dedicated configuration scripts
 
 ### 4. Unified Web + Desktop Automation
 The integration of both web testing (via Playwright) and desktop automation within a single framework provides:
@@ -120,7 +129,42 @@ MONGODB_URI=mongodb://localhost:27017/uniauto
 # Claude Configuration (required for AI processing)
 CLAUDE_API_KEY=your_claude_api_key
 CLAUDE_MODEL=claude-3-7-sonnet-20240229
+
+# Desktop Integration (optional)
+ENABLE_DESKTOP_INTEGRATION=true
 ```
+
+### Claude Desktop Integration
+
+To set up Claude Desktop integration, follow these steps:
+
+1. Make sure desktop integration is enabled in your `.env` file:
+   ```
+   ENABLE_DESKTOP_INTEGRATION=true
+   ```
+
+2. Run the setup script:
+   ```bash
+   npm run setup:claude-desktop
+   ```
+
+3. Start the server:
+   ```bash
+   npm start
+   ```
+
+4. Test the connection:
+   ```bash
+   npm run test:connection
+   ```
+
+5. In Claude Desktop:
+   - Go to Settings > Tools
+   - Click "Add Tool"
+   - Enter `http://localhost:3000/api/mcp/manifest`
+   - Authorize the connection when prompted
+
+For more detailed instructions, see [Claude Desktop Integration Guide](docs/ai-integration/claude-desktop.md).
 
 ### Claude API Integration
 
@@ -193,13 +237,40 @@ This server is compatible with the Model Context Protocol (MCP) used by AI assis
 2. Register the MCP server with the AI assistant
 3. The AI can now use the automation capabilities via the MCP protocol
 
+### Supported Integrations
+
+UniAuto MCP Server supports integrations with multiple AI assistants and development environments:
+
+- **Claude**: Claude Web, Claude Desktop, Claude in VSCode, Claude Code CLI
+- **Cursor**: AI-powered code editor with Claude integration
+- **VSCode**: Visual Studio Code with Claude extension
+- **Smithery.ai**: Platform for connecting AI assistants to tools
+- **CLI**: Command line interface for automation
+- **Windsurf**: Additional AI assistant compatibility
+
+### Integration Setup
+
+```bash
+# Generate configuration files for all integrations
+npm run setup:integrations
+
+# Configure for Claude Desktop
+npm run setup:claude-desktop
+
+# Connect with Smithery.ai
+npm run smithery:connect
+
+# Test the connection
+npm run test:connection
+```
+
+The `config` directory contains example configuration files for all supported integrations.
+
 ### Smithery.ai Integration
 
 [![smithery badge](https://smithery.ai/badge/@samuelvinay91/uniauto-mcp-server)](https://smithery.ai/server/@samuelvinay91/uniauto-mcp-server)
 
 UniAuto MCP Server integrates seamlessly with [Smithery.ai](https://smithery.ai), making it easy to connect with Claude 3.7 and other AI assistants:
-
-For seamless integration with AI assistants, you can use Smithery.ai:
 
 ```bash
 # Install Smithery CLI
@@ -216,35 +287,35 @@ Once connected, you can use Claude Code, Claude Web, VSCode with Claude Extensio
 
 See the [Smithery Setup Guide](docs/setup/SMITHERY-CLAUDE-GUIDE.md) for detailed instructions.
 
-### Claude Desktop Integration
+### Integration-Specific Setup
 
-UniAuto MCP Server can be directly integrated with Claude Desktop application for seamless testing capabilities:
+#### Claude Desktop
 
-```bash
-# On Windows, run the setup script (requires PowerShell):
-scripts/setup-claude-desktop.bat
+1. Start the MCP server:
+   ```bash
+   npm start
+   ```
 
-# On macOS/Linux:
-node scripts/setup-claude-desktop.js
-```
+2. In Claude Desktop:
+   - Go to Settings > Tools
+   - Add Tool: `http://localhost:3000/api/mcp/manifest`
+   - Authorize the connection
 
-The setup script will:
-1. Configure your environment variables
-2. Set up the Claude Desktop MCP configuration
-3. Connect UniAuto MCP Server to Claude Desktop
+#### VSCode with Claude Extension
 
-After setup, you can test the integration:
+1. Copy `config/vscode-settings-example.json` settings to your VSCode settings.json
+2. Start the MCP server
+3. Open Claude in VSCode and request automation tasks
 
-```bash
-# Test the connection
-node scripts/test-claude-desktop.js
-```
+#### Cursor IDE
 
-See the [Claude Desktop MCP Setup Guide](docs/claude-desktop-mcp-setup.md) for detailed instructions.
+1. Copy `config/cursor-settings-example.json` settings to your Cursor settings
+2. Start the MCP server
+3. Use Claude in Cursor to perform automation tasks
 
-### AI Assistant Integration
+### AI Assistant Integration Documentation
 
-UniAuto works with various AI assistants:
+For more detailed integration guides:
 
 - [Claude Integration Guide](docs/ai-integration/claude.md)
 - [VSCode Integration Guide](docs/ai-integration/vscode.md)
