@@ -31,7 +31,31 @@ const PROTOCOL_TYPES = {
  * @returns {String} The detected protocol type
  */
 function detectProtocolType(req) {
-  // First try to detect based on the headers and user agent
+  // Log the request body for debugging
+  logger.debug(`Request body: ${JSON.stringify(req.body || {})}`);
+  
+  // Standard detection logic
+  
+  // Enhanced JSON-RPC 2.0 detection - handles test-connection.js requests
+  if (req.body && req.body.jsonrpc === '2.0') {
+    // Extra validation to ensure it's a JSON-RPC request
+    if (req.body.method) {
+      logger.debug(`Detected JSON-RPC 2.0 protocol with method: ${req.body.method}`);
+      return PROTOCOL_TYPES.JSON_RPC;
+    }
+    
+    // Even if method is somehow missing, if jsonrpc is 2.0, assume JSON-RPC
+    logger.debug('Detected JSON-RPC 2.0 protocol (missing method but has jsonrpc field)');
+    return PROTOCOL_TYPES.JSON_RPC;
+  }
+  
+  // Check for standard MCP
+  if (req.body && (req.body.action || req.body.command)) {
+    logger.debug('Detected MCP protocol');
+    return PROTOCOL_TYPES.MCP;
+  }
+  
+  // Try to detect based on the headers and user agent
   // This requires the integrations module, but avoid circular dependencies
   // by not importing at the top level
   try {
@@ -40,32 +64,24 @@ function detectProtocolType(req) {
     
     // Get the integration type
     const integrationType = detectIntegrationType(req);
+    logger.debug(`Detected integration type: ${integrationType}`);
     
     // Get the protocol adapter for that integration
     const adapter = getProtocolAdapter(integrationType);
     
     // Return the protocol type from the adapter
     if (adapter && adapter.type) {
+      logger.debug(`Using protocol from adapter: ${adapter.type}`);
       return adapter.type;
     }
   } catch (error) {
+    logger.debug(`Error in integration detection: ${error.message}`);
     // If there's an error or the integrations module isn't available yet,
-    // fall back to the standard detection logic
-  }
-  
-  // Standard detection logic
-  
-  // Check for JSON-RPC 2.0
-  if (req.body && req.body.jsonrpc === '2.0' && req.body.method) {
-    return PROTOCOL_TYPES.JSON_RPC;
-  }
-  
-  // Check for standard MCP
-  if (req.body && (req.body.action || req.body.command)) {
-    return PROTOCOL_TYPES.MCP;
+    // fall back to the default
   }
   
   // Default to REST API
+  logger.debug('Defaulting to REST API protocol');
   return PROTOCOL_TYPES.REST_API;
 }
 

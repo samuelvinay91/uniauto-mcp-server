@@ -4,7 +4,7 @@
  */
 
 const { chromium } = require('playwright');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 
 // Store the browser instance for reuse
 let browser = null;
@@ -17,11 +17,19 @@ let page = null;
 async function initialize() {
   try {
     if (!process.env.ENABLE_DESKTOP_INTEGRATION) {
-      logger.warn('Desktop integration is disabled. Set ENABLE_DESKTOP_INTEGRATION=true in .env to enable it.');
+      try {
+        logger.warn('Desktop integration is disabled. Set ENABLE_DESKTOP_INTEGRATION=true in .env to enable it.');
+      } catch (logError) {
+        console.warn('Desktop integration is disabled. Set ENABLE_DESKTOP_INTEGRATION=true in .env to enable it.');
+      }
       return false;
     }
 
-    logger.info('Initializing desktop automation capabilities...');
+    try {
+      logger.info('Initializing desktop automation capabilities...');
+    } catch (logError) {
+      console.info('Initializing desktop automation capabilities...');
+    }
     
     // Launch the browser if not already launched
     if (!browser) {
@@ -39,12 +47,20 @@ async function initialize() {
       // Create a page for desktop automation
       page = await context.newPage();
       
-      logger.info('Desktop automation initialized successfully');
+      try {
+        logger.info('Desktop automation initialized successfully');
+      } catch (logError) {
+        console.info('Desktop automation initialized successfully');
+      }
     }
     
     return true;
   } catch (error) {
-    logger.error(`Failed to initialize desktop automation: ${error.message}`);
+    try {
+      logger.error(`Failed to initialize desktop automation: ${error.message}`);
+    } catch (logError) {
+      console.error(`Failed to initialize desktop automation: ${error.message}`);
+    }
     return false;
   }
 }
@@ -66,7 +82,12 @@ async function desktopClick(x, y) {
     
     return { success: true, message: `Clicked at coordinates (${x}, ${y})` };
   } catch (error) {
-    logger.error(`Desktop click failed: ${error.message}`);
+    // Use try-catch to handle logger issues
+    try {
+      logger.error(`Desktop click failed: ${error.message}`);
+    } catch (logError) {
+      console.error(`Desktop click failed: ${error.message}`);
+    }
     return { success: false, message: error.message };
   }
 }
@@ -87,7 +108,12 @@ async function desktopType(text) {
     
     return { success: true, message: `Typed text: "${text.substring(0, 20)}${text.length > 20 ? '...' : ''}"` };
   } catch (error) {
-    logger.error(`Desktop type failed: ${error.message}`);
+    // Use try-catch to handle logger issues
+    try {
+      logger.error(`Desktop type failed: ${error.message}`);
+    } catch (logError) {
+      console.error(`Desktop type failed: ${error.message}`);
+    }
     return { success: false, message: error.message };
   }
 }
@@ -98,15 +124,29 @@ async function desktopType(text) {
 async function close() {
   try {
     if (browser) {
-      logger.info('Closing desktop automation session...');
+      try {
+        logger.info('Closing desktop automation session...');
+      } catch (logError) {
+        console.info('Closing desktop automation session...');
+      }
+      
       await browser.close();
       browser = null;
       context = null;
       page = null;
-      logger.info('Desktop automation session closed');
+      
+      try {
+        logger.info('Desktop automation session closed');
+      } catch (logError) {
+        console.info('Desktop automation session closed');
+      }
     }
   } catch (error) {
-    logger.error(`Failed to close desktop automation: ${error.message}`);
+    try {
+      logger.error(`Failed to close desktop automation: ${error.message}`);
+    } catch (logError) {
+      console.error(`Failed to close desktop automation: ${error.message}`);
+    }
   }
 }
 

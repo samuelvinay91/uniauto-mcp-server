@@ -344,6 +344,16 @@ function detectIntegrationType(req) {
     return INTEGRATION_TYPES.CLAUDE;
   }
   
+  // Check the request body for JSON-RPC format which indicates Claude Desktop
+  // This helps with test clients that might not have Claude in user-agent
+  if (req.body && req.body.jsonrpc === '2.0' && 
+      (req.body.method === 'initialize' || 
+       req.body.method === 'getManifest' || 
+       req.body.method === 'execute')) {
+    logger.debug('Detected JSON-RPC format in request body, treating as Claude Desktop');
+    return INTEGRATION_TYPES.CLAUDE;
+  }
+  
   // Check for Cursor
   if (userAgent.includes('Cursor')) {
     return INTEGRATION_TYPES.CURSOR;
