@@ -262,9 +262,19 @@ let keepAliveInterval = null;
 // Unified endpoint for all protocol types
 router.post('/mcp/invoke', async (req, res) => {
   try {
+    // Get the integration type if available
+    let integrationType = 'generic';
+    try {
+      const { detectIntegrationType } = require('../utils/integrations');
+      integrationType = detectIntegrationType(req);
+    } catch (error) {
+      // If integrations module is not available or there's an error, 
+      // continue with default protocol detection
+    }
+    
     // 1. Detect protocol type
     const protocolType = detectProtocolType(req);
-    logger.info(`Request received with protocol: ${protocolType}`);
+    logger.info(`Request received with protocol: ${protocolType}, integration: ${integrationType}`);
     
     // 2. Validate request
     const validation = validateMcpRequest(req);
@@ -292,7 +302,7 @@ router.post('/mcp/invoke', async (req, res) => {
     const normalizedRequest = normalizeRequest(req, protocolType);
     const { action, parameters, metadata } = normalizedRequest;
     
-    logger.info(`Processing action: ${action}, protocol: ${protocolType}`);
+    logger.info(`Processing action: ${action}, protocol: ${protocolType}, integration: ${integrationType}`);
     
     // 4. Special handling for JSON-RPC protocol methods that need direct response
     if (protocolType === PROTOCOL_TYPES.JSON_RPC) {
@@ -307,9 +317,16 @@ router.post('/mcp/invoke', async (req, res) => {
         // Setup keep-alive mechanism to prevent disconnection
         setupKeepAlive();
         
-        // Read manifest for server info
-        const manifestPath = path.join(process.cwd(), 'mcp-manifest.json');
-        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        // Access config manager if available
+        let manifest;
+        try {
+          const configManager = require('../utils/config');
+          manifest = configManager.getMcpManifest();
+        } catch (error) {
+          // Fallback to file system read if config manager not available
+          const manifestPath = path.join(process.cwd(), 'mcp-manifest.json');
+          manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        }
         
         return res.json({
           jsonrpc: '2.0',
@@ -339,8 +356,15 @@ router.post('/mcp/invoke', async (req, res) => {
       
       if (req.body.method === 'getManifest') {
         try {
-          const manifestPath = path.join(process.cwd(), 'mcp-manifest.json');
-          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+          let manifest;
+          try {
+            const configManager = require('../utils/config');
+            manifest = configManager.getMcpManifest();
+          } catch (error) {
+            // Fallback to file system read if config manager not available
+            const manifestPath = path.join(process.cwd(), 'mcp-manifest.json');
+            manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+          }
           
           return res.json({
             jsonrpc: '2.0',
@@ -358,6 +382,13 @@ router.post('/mcp/invoke', async (req, res) => {
             }
           });
         }
+      }
+      
+      // Handle execute method for JSON-RPC
+      if (req.body.method === 'execute' && req.body.params) {
+        // Map the JSON-RPC execute parameters to our normalized format
+        normalizedRequest.action = req.body.params.action;
+        normalizedRequest.parameters = req.body.params.parameters || {};
       }
     }
     
