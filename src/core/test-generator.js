@@ -6,9 +6,9 @@
  */
 
 const { logger } = require('../utils/logger');
-const Anthropic = require('@anthropic-ai/sdk');
 const fs = require('fs').promises;
 const path = require('path');
+const configManager = require('../utils/config');
 
 // Supported test frameworks
 const TEST_FRAMEWORKS = {
@@ -501,28 +501,18 @@ async function generateTestCode(params) {
   logger.info(`Generating test code using ${framework} framework with ${style} style`);
   
   try {
-    // Use Claude to generate the test code based on the analysis and requirements
-    const anthropic = new Anthropic({
-      apiKey: process.env.CLAUDE_API_KEY,
-    });
-    
     // Prepare prompt for Claude
     const promptText = buildPrompt(pageInfo, framework, style, format, prompt, additionalContext);
     
-    // Generate test code using Claude
-    const response = await anthropic.messages.create({
-      model: process.env.CLAUDE_MODEL || "claude-3-7-sonnet-20240229",
-      max_tokens: 4000,
-      messages: [
-        {
-          role: "user",
-          content: promptText
-        }
-      ]
+    // Use our centralized AI service to interact with Claude
+    const aiService = require('../utils/ai-service');
+    const response = await aiService.processWithClaude({
+      prompt: promptText,
+      maxTokens: 4000
     });
     
     // Extract code from response
-    const generatedCode = extractCodeFromResponse(response.content[0].text);
+    const generatedCode = aiService.extractCodeFromResponse(response);
     return generatedCode;
   } catch (error) {
     logger.error(`Test code generation error: ${error.message}`);
@@ -676,28 +666,8 @@ GENERAL INSTRUCTIONS:
 
 The final code should be production-ready, well-structured, and follow all best practices for ${framework} test automation. Include all necessary imports, configuration, and setup code.`;
 }
-}
 
-/**
- * Extract code blocks from Claude's response
- * 
- * @param {string} response - Claude's response text
- * @returns {string} Extracted code
- */
-function extractCodeFromResponse(response) {
-  // Look for code blocks in markdown format
-  const codeBlockRegex = /```(?:javascript|typescript|js|ts|python|java|csharp|ruby)?\s*([\s\S]*?)```/g;
-  const matches = [...response.matchAll(codeBlockRegex)];
-  
-  if (matches.length > 0) {
-    // Join all code blocks with newlines
-    return matches.map(match => match[1]).join('\n\n');
-  } else {
-    // If no code blocks found, try to extract code without markdown markers
-    logger.warn('No code blocks found in response, returning raw text');
-    return response;
-  }
-}
+// Removed redundant code extraction function - now using the centralized implementation from ai-service.js
 
 /**
  * Save generated tests to a file
