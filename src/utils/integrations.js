@@ -258,7 +258,46 @@ function writeIntegrationFiles(outputDir = 'config') {
     // Write Smithery YAML file
     fs.writeFileSync(
       path.join(basePath, 'smithery-example.yaml'),
-      JSON.stringify(smitheryConfig, null, 2)
+      `startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      port:
+        type: number
+        default: 3000
+        description: "Port on which the server runs"
+      claudeApiKey:
+        type: string
+        description: "Claude API Key for AI features"
+      claudeModel:
+        type: string
+        default: "claude-3-7-sonnet-20240229"
+        description: "Claude model to use for AI features"
+      logLevel:
+        type: string
+        default: "info"
+        enum: ["error", "warn", "info", "debug"]
+        description: "Logging level for the server"
+    required: ["claudeApiKey"]
+  commandFunction: |-
+    (config) => ({
+      "command": "node",
+      "args": [
+        "src/index.js"
+      ],
+      "env": {
+        "PORT": config.port.toString(),
+        "NODE_ENV": "production",
+        "CLAUDE_API_KEY": config.claudeApiKey,
+        "CLAUDE_MODEL": config.claudeModel,
+        "LOG_LEVEL": config.logLevel || "info",
+        "LOG_DIR": "logs",
+        "ENABLE_DESKTOP_INTEGRATION": "true",
+        "HEADLESS": "true",
+        "BROWSER": "chromium"
+      }
+    })`
     );
     
     // Write VSCode config example
