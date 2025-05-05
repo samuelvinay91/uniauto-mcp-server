@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/samuelvinay91-uniauto-mcp-server-badge.png)](https://mseep.ai/app/samuelvinay91-uniauto-mcp-server)
+
 # UniAuto MCP Server
 
 <p align="center">
